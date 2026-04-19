@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""成本数据库工具 V3.1 (Python + sqlite3)
+"""成本数据库工具 V3.2 (Python + sqlite3)
 
 用法：python cost_db.py <command> [args]
 
 命令：
-  insert --日期 ...    插入记录（自动创建成本项）
+  insert --日期 ...    插入记录（自动创建成本项 + 自动校验）
   update <id> <f> <v>  更新记录
   delete <id>          删除记录（级联删除）
   query "<sql>"        SQL 查询
@@ -27,10 +27,9 @@ from datetime import datetime
 # ── Paths ──
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(HERE, '成本数据.db')
+DB_PATH = os.environ.get('COST_DB_PATH', os.path.join(HERE, '成本数据.db'))
 DASHBOARD_PATH = os.path.join(HERE, '成本查询.md')
 EXPORT_PATH = os.path.join(HERE, '成本数据_export.json')
-CONVERSION_PATH = os.environ.get('CONVERSION_TABLE', os.path.join(HERE, '..', '系统配置', '换算表.md'))
 
 # ── DB Helpers ──
 
@@ -105,6 +104,9 @@ ALLOWED_UPDATE_FIELDS = [
     'location', 'project_name', 'spec', 'status', 'input_device', 'source_file', 'raw_text',
     'is_composite', 'conversion_source', 'conversion_formula', 'remark',
 ]
+
+# Pre-built parameterized SQL for each allowed update field
+FIELD_UPDATE_SQL = {f: f'UPDATE cost_price SET {f} = ? WHERE id = ?' for f in ALLOWED_UPDATE_FIELDS}
 
 
 def map_field(f):
@@ -203,6 +205,89 @@ def get_price_category(method):
     return '其他'
 
 
+# ── Validation Engine ──
+
+def validate_price(conn, name, unit, price, category=''):
+    """Check price against validation_rule table. Returns list of warnings."""
+    warnings = []
+    # Try name + unit + category first (most specific)
+    rules = run_query(conn,
+        'SELECT low_price, high_price FROM validation_rule WHERE name = ? AND unit = ? AND category = ?',
+        (name, unit, category))
+    # Fallback to name + unit (for names that only exist in one category)
+    if not rules:
+        rules = run_query(conn,
+            'SELECT low_price, high_price FROM validation_rule WHERE name = ? AND unit = ?',
+            (name, unit))
+    if rules:
+        r = rules[0]
+        if price < r['low_price'] or price > r['high_price']:
+            warnings.append(
+                f'价格超限: {price} 超出 [{r["low_price"]}, {r["high_price"]}] 区间')
+    return warnings
+
+
+def check_duplicate(conn, item_id, date, price, source_person):
+    """Check for duplicate records. Returns list of warnings."""
+    warnings = []
+    dupes = run_query(conn,
+        'SELECT id FROM cost_price WHERE item_id = ? AND date = ? AND price = ? AND source_person = ?',
+        (item_id, date, price, source_person))
+    if dupes:
+        warnings.append(f'疑似重复: 已存在相同日期+单价+报价人的记录 #{dupes[0]["id"]}')
+    return warnings
+
+
+def check_trend(conn, name, unit, location, current_price):
+    """Check if recent prices show sustained increase >20%. Returns warnings."""
+    warnings = []
+    recent = run_query(conn, """
+        SELECT cp.price FROM cost_price cp
+        JOIN cost_item ci ON cp.item_id = ci.id
+        WHERE ci.name = ? AND cp.unit = ? AND (cp.location = ? OR ? = '')
+        ORDER BY cp.date DESC LIMIT 3
+    """, (name, unit, location, location))
+    if len(recent) == 3:
+        p1, p2, p3 = recent[2]['price'], recent[1]['price'], recent[0]['price']
+        if p1 < p2 < p3:
+            increase_pct = (p3 - p1) / p1 * 100
+            if increase_pct > 20:
+                warnings.append(f'价格趋势异常: 最近3次持续上涨 {increase_pct:.1f}%')
+    return warnings
+
+
+# ── Safe Formula Evaluation ──
+
+def _safe_eval_formula(formula_text):
+    """Evaluate a simple arithmetic formula with only * and / operators.
+
+    Supported formats: "N", "N * M", "N * M / K", "N / M"
+    where N, M, K are decimal numbers. No parentheses, no addition, no subtraction.
+    """
+    if not re.match(r'^[\d\s\.\*/]+$', formula_text):
+        raise ValueError(f'公式包含非法字符: {formula_text}')
+    tokens = formula_text.strip().split()
+    if not tokens:
+        raise ValueError('空公式')
+    result = float(tokens[0])
+    i = 1
+    while i < len(tokens):
+        op = tokens[i]
+        if op not in ('*', '/'):
+            raise ValueError(f'不支持的运算符: {op}')
+        if i + 1 >= len(tokens):
+            raise ValueError(f'公式不完整: {formula_text}')
+        operand = float(tokens[i + 1])
+        if op == '*':
+            result *= operand
+        else:
+            if operand == 0:
+                raise ValueError('除数为零')
+            result /= operand
+        i += 2
+    return result
+
+
 # ── Public API (importable by api_server.py) ──
 
 def insert_record(params: dict) -> int:
@@ -240,6 +325,27 @@ def insert_record(params: dict) -> int:
                 status = '待核实'
                 remark += f' 工料机合计{s}与单价偏差{((s - price) / price * 100):.1f}%'
 
+        # ── Auto Validation ──
+        source_person = params.get('报价人') or params.get('source_person') or ''
+        location = params.get('地区') or params.get('location') or ''
+
+        validation_warnings = []
+        validation_warnings.extend(validate_price(conn, name, normed_unit, price, category))
+        validation_warnings.extend(check_duplicate(conn, item_id, date, price, source_person))
+        validation_warnings.extend(check_trend(conn, name, normed_unit, location, price))
+
+        if validation_warnings:
+            status = '待核实'
+            for w in validation_warnings:
+                remark += f' [{w}]'
+                print(f'校验警告: {w}', file=sys.stderr)
+
+        # Check if name exists in validation rules
+        rule_check = run_query(conn,
+            'SELECT id FROM validation_rule WHERE name = ? LIMIT 1', (name,))
+        if not rule_check:
+            remark += ' [待补充词条]'
+
         is_composite = 1 if category == '综合' else 0
 
         conn.execute("""
@@ -252,8 +358,8 @@ def insert_record(params: dict) -> int:
             item_id, price, normed_unit, date,
             params.get('计税方式') or params.get('tax_method') or '不详',
             params.get('询价方式') or params.get('price_type') or '',
-            params.get('报价人') or params.get('source_person') or '',
-            params.get('地区') or params.get('location') or '',
+            source_person,
+            location,
             params.get('项目') or params.get('project_name') or '',
             params.get('规格') or params.get('spec') or '',
             status,
@@ -332,7 +438,7 @@ def update_record(id_str: str, field: str, value: str) -> bool:
 
         numeric_fields = {'price', 'is_composite'}
         val = float(value) if field in numeric_fields else value
-        conn.execute(f'UPDATE cost_price SET {field} = ? WHERE id = ?', (val, price_id))
+        conn.execute(FIELD_UPDATE_SQL[field], (val, price_id))
         conn.commit()
         print(f'已更新 #{price_id}.{field} = {value}')
         return True
@@ -463,11 +569,11 @@ def generate_dashboard() -> str:
         md += f'updated: "{now_str}"\n'
         md += '---\n\n'
         md += '# 成本查询\n\n'
-        md += f'> 数据来源：SQLite（V2 关系型）| 最后更新：{now_str}\n'
+        md += f'> 数据来源：SQLite（V3.2 关系型）| 最后更新：{now_str}\n'
         md += '> 运行 `python cost_db.py dashboard` 刷新\n\n---\n\n'
 
         # 1. 单价查询
-        md += '## 🔍 单价查询\n\n<!-- AUTO-GENERATED: lookup -->\n'
+        md += '## 单价查询\n\n<!-- AUTO-GENERATED: lookup -->\n'
         all_items = run_query(conn, """
             SELECT ci.category, ci.name, cp.unit, COUNT(*) AS samples,
                    ROUND(AVG(cp.price),2) AS avg_price, ROUND(MIN(cp.price),2) AS min_price,
@@ -482,7 +588,7 @@ def generate_dashboard() -> str:
             md += f"| {r['latest_date']} | {r['category']} | {r['name']} | {r['unit']} | {r['samples']} | {fmt(r['avg_price'])} | {fmt(r['min_price'])} | {fmt(r['max_price'])} |\n"
 
         # 2. 最近入库
-        md += '\n---\n\n## 📋 最近入库记录\n\n<!-- AUTO-GENERATED: recent -->\n'
+        md += '\n---\n\n## 最近入库记录\n\n<!-- AUTO-GENERATED: recent -->\n'
         recent = run_query(conn, """
             SELECT cp.date, ci.category, ci.name, cp.spec, cp.price, cp.unit,
                    cp.tax_method, cp.location, cp.project_name, cp.source_person,
@@ -497,7 +603,7 @@ def generate_dashboard() -> str:
             md += f"| {r['date']} | {r['category']} | {r['name']} | {r['spec'] or '-'} | {price_note} | {r['unit']} | {r['tax_method'] or '不详'} | {r['location'] or '-'} | {r['project_name'] or '-'} | {r['source_person'] or '-'} | {r['status'] or '-'} |\n"
 
         # 3. 三价对比
-        md += '\n---\n\n## ⚖️ 三价对比\n\n<!-- AUTO-GENERATED: three-price -->\n'
+        md += '\n---\n\n## 三价对比\n\n<!-- AUTO-GENERATED: three-price -->\n'
         tp_raw = run_query(conn, """
             SELECT ci.name, cp.unit, cp.location, cp.price_type, ROUND(AVG(cp.price),2) AS avg_price
             FROM cost_price cp JOIN cost_item ci ON cp.item_id = ci.id
@@ -530,7 +636,7 @@ def generate_dashboard() -> str:
             md += '> 暂无足够数据进行三价对比\n'
 
         # 4. 综合报价拆分
-        md += '\n---\n\n## 📦 综合报价工料机拆分\n\n<!-- AUTO-GENERATED: breakdown -->\n'
+        md += '\n---\n\n## 综合报价工料机拆分\n\n<!-- AUTO-GENERATED: breakdown -->\n'
         comp_raw = run_query(conn, """
             SELECT ci.name, cp.unit, cp.id AS price_id, cp.price
             FROM cost_price cp JOIN cost_item ci ON cp.item_id = ci.id
@@ -569,9 +675,8 @@ def generate_dashboard() -> str:
             md += '> 暂无综合报价的工料机拆分数据\n'
 
         # 5. 按大类价格汇总
-        md += '\n---\n\n## 📊 按大类价格汇总\n\n<!-- AUTO-GENERATED: summary -->\n'
+        md += '\n---\n\n## 按大类价格汇总\n\n<!-- AUTO-GENERATED: summary -->\n'
         cat_order = ['人工费', '材料费', '机械费', '综合']
-        cat_icon = {'人工费': '👷', '材料费': '🧱', '机械费': '🏗️', '综合': '📦'}
         for cat in cat_order:
             rows = run_query(conn, """
                 SELECT ci.name, cp.unit, COUNT(*) AS samples, ROUND(AVG(cp.price),2) AS avg_price,
@@ -583,8 +688,7 @@ def generate_dashboard() -> str:
             """, (cat,))
             if not rows:
                 continue
-            icon = cat_icon.get(cat, '')
-            md += f'### {icon} {cat}\n\n'
+            md += f'### {cat}\n\n'
             md += '| 名称 | 单位 | 样本 | 均价 | 最低 | 最高 | 价差 |\n'
             md += '|------|------|------|------|------|------|------|\n'
             for r in rows:
@@ -592,7 +696,7 @@ def generate_dashboard() -> str:
             md += '\n'
 
         # 6. 价格趋势
-        md += '---\n\n## 📈 价格趋势\n\n<!-- AUTO-GENERATED: trends -->\n'
+        md += '---\n\n## 价格趋势\n\n<!-- AUTO-GENERATED: trends -->\n'
         trend_raw = run_query(conn, """
             SELECT ci.name, cp.unit, cp.location, cp.date, cp.price
             FROM cost_price cp JOIN cost_item ci ON cp.item_id = ci.id
@@ -620,7 +724,7 @@ def generate_dashboard() -> str:
             md += '> 暂无足够数据展示价格趋势\n'
 
         # 7. 按项目分组
-        md += '\n---\n\n## 🏗️ 按项目分组\n\n<!-- AUTO-GENERATED: projects -->\n'
+        md += '\n---\n\n## 按项目分组\n\n<!-- AUTO-GENERATED: projects -->\n'
         projects = run_query(conn, """
             SELECT cp.project_name, COUNT(*) AS cnt, COUNT(DISTINCT ci.name) AS items,
                    GROUP_CONCAT(DISTINCT ci.category) AS categories
@@ -684,24 +788,13 @@ def cmd_convert_tax(id_str, args):
 
 # ── Unit Conversion ──
 
-def load_conversions():
-    if not os.path.exists(CONVERSION_PATH):
-        return []
-    with open(CONVERSION_PATH, 'r', encoding='utf-8') as f:
-        content = f.read()
-    conversions = []
-    current_section = ''
-    for line in content.split('\n'):
-        if line.startswith('## ') and '使用方法' not in line:
-            current_section = line.replace('## ', '').strip()
-        if line.startswith('|') and '换算名称' not in line and not re.match(r'^\|[\s\-|]+\|$', line):
-            cols = [c.strip() for c in line.split('|') if c.strip()]
-            if len(cols) >= 4:
-                conversions.append({
-                    'section': current_section, 'name': cols[0], 'fromUnit': cols[1],
-                    'toUnit': cols[2], 'formula': cols[3], 'note': cols[4] if len(cols) > 4 else '',
-                })
-    return conversions
+def load_conversions(conn):
+    """Load conversion formulas from DB table."""
+    rows = run_query(conn,
+        'SELECT name, from_unit, to_unit, formula, note FROM conversion_formula ORDER BY id')
+    return [{'name': r['name'], 'fromUnit': r['from_unit'],
+             'toUnit': r['to_unit'], 'formula': r['formula'],
+             'note': r['note']} for r in rows]
 
 
 def cmd_convert(id_str, args):
@@ -721,9 +814,9 @@ def cmd_convert(id_str, args):
             return
 
         source = rows[0]
-        conversions = load_conversions()
+        conversions = load_conversions(conn)
         if not conversions:
-            raise FileNotFoundError('未找到换算表')
+            raise FileNotFoundError('未找到换算公式（conversion_formula 表为空）')
 
         matches = [c for c in conversions if c['fromUnit'] == source['unit']]
         if not matches:
@@ -750,10 +843,7 @@ def cmd_convert(id_str, args):
 
         price_str = str(source['price'])
         formula_text = target['formula'].replace('单价', price_str)
-        try:
-            converted_price = eval(formula_text, {"__builtins__": {}}, {})
-        except Exception:
-            raise ValueError(f'公式计算失败: {formula_text}')
+        converted_price = _safe_eval_formula(formula_text)
 
         to_unit = normalize_unit(target['toUnit'], conn)
         item_id = find_or_create_item(conn, source['name'], source['category'], to_unit)
@@ -818,33 +908,35 @@ def cmd_project(name):
         for r in summary:
             md += f"| {r['category']} | {r['cnt']} | {fmt(r['total'])} |\n"
 
-        project_dir = os.environ.get('PROJECT_DIR', os.path.join(HERE, '..', '..', '20_工程项目'))
-        safe_name = re.sub(r'[\\/:*?"<>|]', '_', name)
-        project_file = None
-        if os.path.exists(project_dir):
+        project_dir = os.environ.get('COST_PROJECT_DIR', '')
+        if project_dir and os.path.exists(project_dir):
+            safe_name = re.sub(r'[\\/:*?"<>|]', '_', name)
+            project_file = None
             for f in os.listdir(project_dir):
                 if f.endswith('.md') and (safe_name in f or name in f):
                     project_file = os.path.join(project_dir, f)
                     break
 
-        if project_file:
-            with open(project_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            marker = '<!-- AUTO-GENERATED: cost_detail -->'
-            end_marker = '<!-- /AUTO-GENERATED: cost_detail -->'
-            section = f'\n{marker}\n{md}\n{end_marker}\n'
-            si = content.find(marker)
-            if si != -1:
-                ei = content.find(end_marker, si)
-                if ei != -1:
-                    content = content[:si] + section + content[ei + len(end_marker):]
+            if project_file:
+                with open(project_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                marker = '<!-- AUTO-GENERATED: cost_detail -->'
+                end_marker = '<!-- /AUTO-GENERATED: cost_detail -->'
+                section = f'\n{marker}\n{md}\n{end_marker}\n'
+                si = content.find(marker)
+                if si != -1:
+                    ei = content.find(end_marker, si)
+                    if ei != -1:
+                        content = content[:si] + section + content[ei + len(end_marker):]
+                    else:
+                        content += section
                 else:
-                    content += section
+                    content += '\n\n' + section
+                with open(project_file, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                print(f'项目成本已更新：{project_file}')
             else:
-                content += '\n\n' + section
-            with open(project_file, 'w', encoding='utf-8') as f:
-                f.write(content)
-            print(f'项目成本已更新：{project_file}')
+                print(md)
         else:
             print(md)
     finally:
@@ -963,10 +1055,10 @@ def parse_args(args):
 def main():
     argv = sys.argv[1:]
     if not argv:
-        print('成本数据库工具 V3.1\n')
+        print('成本数据库工具 V3.2\n')
         print('用法：python cost_db.py <command> [args]\n')
         print('命令：')
-        print('  insert --日期 ...    插入记录（自动创建成本项）')
+        print('  insert --日期 ...    插入记录（自动创建成本项 + 自动校验）')
         print('  update <id> <f> <v>  更新记录')
         print('  delete <id>          删除记录（级联删除）')
         print('  query "<sql>"        SQL 查询')

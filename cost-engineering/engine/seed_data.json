@@ -1,555 +1,132 @@
 {
   "unit_standard": [
-    {
-      "unit": "t",
-      "standard_form": "t",
-      "precision_rule": "小数 3 位"
-    },
-    {
-      "unit": "吨",
-      "standard_form": "t",
-      "precision_rule": "小数 3 位"
-    },
-    {
-      "unit": "km",
-      "standard_form": "km",
-      "precision_rule": "小数 3 位"
-    },
-    {
-      "unit": "千米",
-      "standard_form": "km",
-      "precision_rule": "小数 3 位"
-    },
-    {
-      "unit": "m",
-      "standard_form": "m",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "米",
-      "standard_form": "m",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "m²",
-      "standard_form": "m²",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "m2",
-      "standard_form": "m²",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "平方米",
-      "standard_form": "m²",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "㎡",
-      "standard_form": "m²",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "m³",
-      "standard_form": "m³",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "m3",
-      "standard_form": "m³",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "立方米",
-      "standard_form": "m³",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "kg",
-      "standard_form": "kg",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "千克",
-      "standard_form": "kg",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "公斤",
-      "standard_form": "kg",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "其他未列单位",
-      "standard_form": "其他未列单位",
-      "precision_rule": "小数 2 位"
-    },
-    {
-      "unit": "个",
-      "standard_form": "个",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "根",
-      "standard_form": "根",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "组",
-      "standard_form": "组",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "块",
-      "standard_form": "块",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "座",
-      "standard_form": "座",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "件",
-      "standard_form": "件",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "台",
-      "standard_form": "台",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "套",
-      "standard_form": "套",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "次",
-      "standard_form": "次",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "系统",
-      "standard_form": "系统",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "项",
-      "standard_form": "项",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "处",
-      "standard_form": "处",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "孔",
-      "standard_form": "孔",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "点",
-      "standard_form": "点",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "副",
-      "standard_form": "副",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "链路",
-      "standard_form": "链路",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "台次",
-      "standard_form": "台次",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "樘",
-      "standard_form": "樘",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "条",
-      "standard_form": "条",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "站",
-      "standard_form": "站",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "只",
-      "standard_form": "只",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "株",
-      "standard_form": "株",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "百对",
-      "standard_form": "百对",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "百线",
-      "standard_form": "百线",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "部",
-      "standard_form": "部",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "层次",
-      "standard_form": "层次",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "丛",
-      "standard_form": "丛",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "单元",
-      "standard_form": "单元",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "倒换段",
-      "standard_form": "倒换段",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "端",
-      "standard_form": "端",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "端口",
-      "standard_form": "端口",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "对",
-      "standard_form": "对",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "方向·系统",
-      "standard_form": "方向·系统",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "份",
-      "standard_form": "份",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "环",
-      "standard_form": "环",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "环·系统",
-      "standard_form": "环·系统",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "基",
-      "standard_form": "基",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "架",
-      "standard_form": "架",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "口",
-      "standard_form": "口",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "盘",
-      "standard_form": "盘",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "榀",
-      "standard_form": "榀",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "区域",
-      "standard_form": "区域",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "全电路",
-      "standard_form": "全电路",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "扇区",
-      "standard_form": "扇区",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "十线",
-      "standard_form": "十线",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "室",
-      "standard_form": "室",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "数字段",
-      "standard_form": "数字段",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "台·次",
-      "standard_form": "台·次",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "天",
-      "standard_form": "天",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "相",
-      "standard_form": "相",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "箱",
-      "standard_form": "箱",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "芯",
-      "standard_form": "芯",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "月",
-      "standard_form": "月",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "载·扇",
-      "standard_form": "载·扇",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "载频",
-      "standard_form": "载频",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "攒",
-      "standard_form": "攒",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "张",
-      "standard_form": "张",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "支",
-      "standard_form": "支",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "中继段",
-      "standard_form": "中继段",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "昼夜",
-      "standard_form": "昼夜",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "子架",
-      "standard_form": "子架",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "橙",
-      "standard_form": "橙",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "栋",
-      "standard_form": "栋",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "楷",
-      "standard_form": "楷",
-      "precision_rule": "整数"
-    },
-    {
-      "unit": "榴",
-      "standard_form": "榴",
-      "precision_rule": "整数"
-    }
+    {"unit": "t", "standard_form": "t", "precision_rule": "小数 3 位"},
+    {"unit": "吨", "standard_form": "t", "precision_rule": "小数 3 位"},
+    {"unit": "km", "standard_form": "km", "precision_rule": "小数 3 位"},
+    {"unit": "千米", "standard_form": "km", "precision_rule": "小数 3 位"},
+    {"unit": "m", "standard_form": "m", "precision_rule": "小数 2 位"},
+    {"unit": "米", "standard_form": "m", "precision_rule": "小数 2 位"},
+    {"unit": "m²", "standard_form": "m²", "precision_rule": "小数 2 位"},
+    {"unit": "m2", "standard_form": "m²", "precision_rule": "小数 2 位"},
+    {"unit": "平方米", "standard_form": "m²", "precision_rule": "小数 2 位"},
+    {"unit": "㎡", "standard_form": "m²", "precision_rule": "小数 2 位"},
+    {"unit": "m³", "standard_form": "m³", "precision_rule": "小数 2 位"},
+    {"unit": "m3", "standard_form": "m³", "precision_rule": "小数 2 位"},
+    {"unit": "立方米", "standard_form": "m³", "precision_rule": "小数 2 位"},
+    {"unit": "kg", "standard_form": "kg", "precision_rule": "小数 2 位"},
+    {"unit": "千克", "standard_form": "kg", "precision_rule": "小数 2 位"},
+    {"unit": "公斤", "standard_form": "kg", "precision_rule": "小数 2 位"},
+    {"unit": "个", "standard_form": "个", "precision_rule": "整数"},
+    {"unit": "根", "standard_form": "根", "precision_rule": "整数"},
+    {"unit": "组", "standard_form": "组", "precision_rule": "整数"},
+    {"unit": "块", "standard_form": "块", "precision_rule": "整数"},
+    {"unit": "座", "standard_form": "座", "precision_rule": "整数"},
+    {"unit": "件", "standard_form": "件", "precision_rule": "整数"},
+    {"unit": "台", "standard_form": "台", "precision_rule": "整数"},
+    {"unit": "套", "standard_form": "套", "precision_rule": "整数"},
+    {"unit": "次", "standard_form": "次", "precision_rule": "整数"},
+    {"unit": "系统", "standard_form": "系统", "precision_rule": "整数"},
+    {"unit": "项", "standard_form": "项", "precision_rule": "整数"},
+    {"unit": "处", "standard_form": "处", "precision_rule": "整数"},
+    {"unit": "点", "standard_form": "点", "precision_rule": "整数"},
+    {"unit": "栋", "standard_form": "栋", "precision_rule": "整数"},
+    {"unit": "张", "standard_form": "张", "precision_rule": "整数"},
+    {"unit": "条", "standard_form": "条", "precision_rule": "整数"},
+    {"unit": "部", "standard_form": "部", "precision_rule": "整数"},
+    {"unit": "天", "standard_form": "天", "precision_rule": "整数"},
+    {"unit": "月", "standard_form": "月", "precision_rule": "整数"},
+    {"unit": "工日", "standard_form": "工日", "precision_rule": "小数 1 位"},
+    {"unit": "台班", "standard_form": "台班", "precision_rule": "小数 2 位"},
+    {"unit": "台·月", "standard_form": "台·月", "precision_rule": "整数"},
+    {"unit": "台·次", "standard_form": "台·次", "precision_rule": "整数"},
+    {"unit": "小时", "standard_form": "小时", "precision_rule": "小数 1 位"},
+    {"unit": "千块", "standard_form": "千块", "precision_rule": "小数 2 位"},
+    {"unit": "其他未列单位", "standard_form": "其他未列单位", "precision_rule": "小数 2 位"}
   ],
   "tax_rate": [
-    {
-      "name": "不详",
-      "rate": 0.0,
-      "description": "未明确计税方式"
-    },
-    {
-      "name": "建筑服务一般计税",
-      "rate": 9.0,
-      "description": "一般纳税人9%"
-    },
-    {
-      "name": "材料销售增值税",
-      "rate": 13.0,
-      "description": "材料13%"
-    },
-    {
-      "name": "简易征收",
-      "rate": 3.0,
-      "description": "简易计税3%"
-    },
-    {
-      "name": "小规模纳税人",
-      "rate": 3.0,
-      "description": "小规模3%"
-    }
+    {"name": "不详", "rate": 0.0, "description": "未明确计税方式"},
+    {"name": "建筑服务一般计税", "rate": 9.0, "description": "一般纳税人9%"},
+    {"name": "材料销售增值税", "rate": 13.0, "description": "材料13%"},
+    {"name": "简易征收", "rate": 3.0, "description": "简易计税3%"},
+    {"name": "小规模纳税人", "rate": 3.0, "description": "小规模3%"}
   ],
   "cost_item": [
-    {
-      "name": "泥浆固化",
-      "category": "综合",
-      "unit_id": 11,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "钢筋",
-      "category": "人工费",
-      "unit_id": 1,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "植筋",
-      "category": "人工费",
-      "unit_id": 19,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "电渣压力焊",
-      "category": "人工费",
-      "unit_id": 18,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "套筒",
-      "category": "人工费",
-      "unit_id": 18,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "点工（技工）",
-      "category": "人工费",
-      "unit_id": null,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "点工（普工）",
-      "category": "人工费",
-      "unit_id": null,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "脚手架",
-      "category": "人工费",
-      "unit_id": 7,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "水泥稳定土",
-      "category": "综合",
-      "unit_id": 7,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "透水混凝土",
-      "category": "综合",
-      "unit_id": 7,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "泡沫混凝土",
-      "category": "综合",
-      "unit_id": 11,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "模卡墙",
-      "category": "综合",
-      "unit_id": 11,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "钢筋",
-      "category": "材料费",
-      "unit_id": 1,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "测试项",
-      "category": "人工费",
-      "unit_id": 7,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "测试API入库",
-      "category": "人工费",
-      "unit_id": 7,
-      "aliases": "",
-      "description": ""
-    },
-    {
-      "name": "石膏板隔墙",
-      "category": "综合",
-      "unit_id": 7,
-      "aliases": "",
-      "description": ""
-    }
+    {"name": "泥浆固化", "category": "综合", "unit_id": 11, "aliases": "", "description": ""},
+    {"name": "钢筋", "category": "人工费", "unit_id": 1, "aliases": "", "description": ""},
+    {"name": "植筋", "category": "人工费", "unit_id": 18, "aliases": "", "description": ""},
+    {"name": "电渣压力焊", "category": "人工费", "unit_id": 18, "aliases": "", "description": ""},
+    {"name": "套筒", "category": "人工费", "unit_id": 18, "aliases": "", "description": ""},
+    {"name": "点工（技工）", "category": "人工费", "unit_id": null, "aliases": "", "description": ""},
+    {"name": "点工（普工）", "category": "人工费", "unit_id": null, "aliases": "", "description": ""},
+    {"name": "脚手架", "category": "人工费", "unit_id": 7, "aliases": "", "description": ""},
+    {"name": "水泥稳定土", "category": "综合", "unit_id": 7, "aliases": "", "description": ""},
+    {"name": "透水混凝土", "category": "综合", "unit_id": 7, "aliases": "", "description": ""},
+    {"name": "泡沫混凝土", "category": "综合", "unit_id": 11, "aliases": "", "description": ""},
+    {"name": "模卡墙", "category": "综合", "unit_id": 11, "aliases": "", "description": ""},
+    {"name": "钢筋", "category": "材料费", "unit_id": 1, "aliases": "", "description": ""},
+    {"name": "石膏板隔墙", "category": "综合", "unit_id": 7, "aliases": "", "description": ""}
+  ],
+  "validation_rule": [
+    {"name": "模板", "category": "人工费", "unit": "元/m²", "low_price": 25, "high_price": 80},
+    {"name": "钢筋", "category": "人工费", "unit": "元/t", "low_price": 500, "high_price": 1200},
+    {"name": "钢筋", "category": "人工费", "unit": "元/m²", "low_price": 30, "high_price": 90},
+    {"name": "混凝土", "category": "人工费", "unit": "元/m³", "low_price": 30, "high_price": 100},
+    {"name": "砌筑", "category": "人工费", "unit": "元/m³", "low_price": 60, "high_price": 200},
+    {"name": "抹灰", "category": "人工费", "unit": "元/m²", "low_price": 15, "high_price": 60},
+    {"name": "脚手架", "category": "人工费", "unit": "元/m²", "low_price": 20, "high_price": 100},
+    {"name": "水电安装", "category": "人工费", "unit": "元/m²", "low_price": 30, "high_price": 120},
+    {"name": "防水", "category": "人工费", "unit": "元/m²", "low_price": 15, "high_price": 60},
+    {"name": "油漆", "category": "人工费", "unit": "元/m²", "low_price": 10, "high_price": 50},
+    {"name": "木工装修", "category": "人工费", "unit": "元/m²", "low_price": 30, "high_price": 120},
+    {"name": "拆除吊顶", "category": "人工费", "unit": "元/m²", "low_price": 5, "high_price": 40},
+    {"name": "拆除砖墙", "category": "人工费", "unit": "元/m²", "low_price": 10, "high_price": 50},
+    {"name": "拆除隔墙", "category": "人工费", "unit": "元/m²", "low_price": 5, "high_price": 40},
+    {"name": "贴地砖", "category": "人工费", "unit": "元/m²", "low_price": 20, "high_price": 80},
+    {"name": "植筋", "category": "人工费", "unit": "元/根", "low_price": 0.5, "high_price": 5},
+    {"name": "电渣压力焊", "category": "人工费", "unit": "元/个", "low_price": 1, "high_price": 10},
+    {"name": "套筒", "category": "人工费", "unit": "元/个", "low_price": 2, "high_price": 15},
+    {"name": "点工（技工）", "category": "人工费", "unit": "元/工日", "low_price": 200, "high_price": 450},
+    {"name": "点工（普工）", "category": "人工费", "unit": "元/工日", "low_price": 150, "high_price": 350},
+    {"name": "钢筋", "category": "材料费", "unit": "元/t", "low_price": 3000, "high_price": 5500},
+    {"name": "混凝土", "category": "材料费", "unit": "元/m³", "low_price": 300, "high_price": 600},
+    {"name": "水泥", "category": "材料费", "unit": "元/t", "low_price": 300, "high_price": 600},
+    {"name": "砂石", "category": "材料费", "unit": "元/t", "low_price": 50, "high_price": 200},
+    {"name": "砌块", "category": "材料费", "unit": "元/m³", "low_price": 100, "high_price": 400},
+    {"name": "模板材", "category": "材料费", "unit": "元/m²", "low_price": 20, "high_price": 80},
+    {"name": "防水卷材", "category": "材料费", "unit": "元/m²", "low_price": 15, "high_price": 80},
+    {"name": "电线电缆", "category": "材料费", "unit": "元/m", "low_price": 2, "high_price": 50},
+    {"name": "给排水管", "category": "材料费", "unit": "元/m", "low_price": 3, "high_price": 80},
+    {"name": "门窗", "category": "材料费", "unit": "元/m²", "low_price": 150, "high_price": 1200},
+    {"name": "石膏板", "category": "材料费", "unit": "元/m²", "low_price": 15, "high_price": 80},
+    {"name": "塔吊", "category": "机械费", "unit": "元/台·月", "low_price": 20000, "high_price": 60000},
+    {"name": "施工电梯", "category": "机械费", "unit": "元/台·月", "low_price": 10000, "high_price": 35000},
+    {"name": "汽车吊", "category": "机械费", "unit": "元/台班", "low_price": 1500, "high_price": 8000},
+    {"name": "挖掘机", "category": "机械费", "unit": "元/台班", "low_price": 800, "high_price": 3500},
+    {"name": "装载机", "category": "机械费", "unit": "元/台班", "low_price": 600, "high_price": 2500},
+    {"name": "混凝土输送泵", "category": "机械费", "unit": "元/m³", "low_price": 15, "high_price": 50},
+    {"name": "混凝土输送泵", "category": "机械费", "unit": "元/台班", "low_price": 1000, "high_price": 5000},
+    {"name": "压路机", "category": "机械费", "unit": "元/台班", "low_price": 800, "high_price": 3000},
+    {"name": "发电机", "category": "机械费", "unit": "元/台班", "low_price": 500, "high_price": 3000},
+    {"name": "电焊机", "category": "机械费", "unit": "元/台班", "low_price": 100, "high_price": 500},
+    {"name": "钢筋加工机械", "category": "机械费", "unit": "元/台班", "low_price": 200, "high_price": 800},
+    {"name": "泥浆固化", "category": "综合", "unit": "元/m³", "low_price": 30, "high_price": 100},
+    {"name": "透水混凝土", "category": "综合", "unit": "元/m²", "low_price": 50, "high_price": 200},
+    {"name": "泡沫混凝土", "category": "综合", "unit": "元/m³", "low_price": 100, "high_price": 400},
+    {"name": "水泥稳定土", "category": "综合", "unit": "元/m²", "low_price": 15, "high_price": 60},
+    {"name": "模卡墙", "category": "综合", "unit": "元/m³", "low_price": 500, "high_price": 4000}
+  ],
+  "conversion_formula": [
+    {"name": "水泥稳定土(15cm)", "from_unit": "元/t", "to_unit": "元/m²", "formula": "单价 * 0.15 * 2400 / 1000", "note": "压实密度2400kg/m³"},
+    {"name": "水泥稳定土(20cm)", "from_unit": "元/t", "to_unit": "元/m²", "formula": "单价 * 0.20 * 2400 / 1000", "note": "厚度20cm"},
+    {"name": "混凝土(m³→㎡,15cm)", "from_unit": "元/m³", "to_unit": "元/m²", "formula": "单价 * 0.15", "note": "15cm板厚"},
+    {"name": "混凝土(m³→㎡,12cm)", "from_unit": "元/m³", "to_unit": "元/m²", "formula": "单价 * 0.12", "note": "12cm板厚"},
+    {"name": "混凝土(m³→㎡,10cm)", "from_unit": "元/m³", "to_unit": "元/m²", "formula": "单价 * 0.10", "note": "10cm板厚"},
+    {"name": "钢筋(吨→㎡,50kg/m²)", "from_unit": "元/t", "to_unit": "元/m²", "formula": "单价 * 50 / 1000", "note": "含钢量50kg/m²"},
+    {"name": "钢筋(吨→㎡,65kg/m²)", "from_unit": "元/t", "to_unit": "元/m²", "formula": "单价 * 65 / 1000", "note": "含钢量65kg/m²"},
+    {"name": "钢筋(吨→㎡,80kg/m²)", "from_unit": "元/t", "to_unit": "元/m²", "formula": "单价 * 80 / 1000", "note": "含钢量80kg/m²"},
+    {"name": "透水混凝土(㎡→m³,15cm)", "from_unit": "元/m²", "to_unit": "元/m³", "formula": "单价 / 0.15", "note": "15cm厚反算"},
+    {"name": "透水混凝土(㎡→m³,10cm)", "from_unit": "元/m²", "to_unit": "元/m³", "formula": "单价 / 0.10", "note": "10cm厚反算"},
+    {"name": "砌块(m³→㎡,200mm)", "from_unit": "元/m³", "to_unit": "元/m²", "formula": "单价 * 0.20", "note": "200mm厚墙"},
+    {"name": "砌块(m³→㎡,100mm)", "from_unit": "元/m³", "to_unit": "元/m²", "formula": "单价 * 0.10", "note": "100mm厚墙"}
   ]
 }

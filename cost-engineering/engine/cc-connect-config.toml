@@ -19,8 +19,8 @@ allowed_tools = [                       # 允许的工具列表
 ]
 
 # ── 工作目录 ──
-# 指向你的 Obsidian 库根目录（成本数据库所在位置）
-work_dir = "YOUR_OBSIDIAN_VAULT_PATH"
+# 指向 cost-engineering engine 目录（cost_db.py 所在位置）
+work_dir = "YOUR_ENGINE_DIR"
 
 # ── 语音转文字 ──
 # 需要安装 ffmpeg：winget install ffmpeg
@@ -101,7 +101,7 @@ prompt = """对记录 {{1}} 执行换算：{{2*}}
 [[commands]]
 name = "刷新"
 description = "刷新看板和 JSON 导出"
-exec = "cd 'YOUR_COST_DB_DIR' && python cost_db.py dashboard"
+exec = "cd 'YOUR_ENGINE_DIR' && python cost_db.py dashboard"
 
 [[commands]]
 name = "识别"

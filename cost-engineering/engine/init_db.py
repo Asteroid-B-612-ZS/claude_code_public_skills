@@ -3,8 +3,8 @@
 
 用法：python init_db.py [--db PATH]
 
-创建 6 张表 + 预置 unit_standard(82条)、tax_rate(5条)。
-cost_item 随入库自动创建，无需预置。
+创建 8 张表 + 预置 unit_standard / tax_rate / validation_rule / conversion_formula。
+cost_item 随入库自动创建，少量预置种子。
 """
 
 import sqlite3
@@ -107,11 +107,30 @@ def init(db_path):
         description TEXT DEFAULT ''
     )''')
 
+    conn.execute('''CREATE TABLE validation_rule (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT NOT NULL,
+        category    TEXT NOT NULL,
+        unit        TEXT NOT NULL,
+        low_price   REAL NOT NULL,
+        high_price  REAL NOT NULL
+    )''')
+    conn.execute('CREATE INDEX idx_val_name_unit ON validation_rule(name, unit)')
+
+    conn.execute('''CREATE TABLE conversion_formula (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT NOT NULL,
+        from_unit   TEXT NOT NULL,
+        to_unit     TEXT NOT NULL,
+        formula     TEXT NOT NULL,
+        note        TEXT DEFAULT ''
+    )''')
+
     conn.execute('''CREATE TABLE _meta (
         key   TEXT PRIMARY KEY,
         value TEXT
     )''')
-    conn.execute("INSERT INTO _meta VALUES ('version', '3.1')")
+    conn.execute("INSERT INTO _meta VALUES ('version', '3.2')")
 
     # ── 预置数据 ──
 
@@ -134,11 +153,22 @@ def init(db_path):
             'INSERT INTO cost_item (name, category, unit_id, aliases, description) VALUES (?,?,?,?,?)',
             (row['name'], row['category'], row['unit_id'], row['aliases'], row['description']))
 
+    for row in seed['validation_rule']:
+        conn.execute(
+            'INSERT INTO validation_rule (name, category, unit, low_price, high_price) VALUES (?,?,?,?,?)',
+            (row['name'], row['category'], row['unit'], row['low_price'], row['high_price']))
+
+    for row in seed['conversion_formula']:
+        conn.execute(
+            'INSERT INTO conversion_formula (name, from_unit, to_unit, formula, note) VALUES (?,?,?,?,?)',
+            (row['name'], row['from_unit'], row['to_unit'], row['formula'], row['note']))
+
     conn.commit()
 
     # ── 统计 ──
     print('数据库初始化完成：')
-    for table in ['cost_item', 'cost_price', 'cost_component', 'cost_feature', 'unit_standard', 'tax_rate']:
+    for table in ['cost_item', 'cost_price', 'cost_component', 'cost_feature',
+                   'unit_standard', 'tax_rate', 'validation_rule', 'conversion_formula']:
         count = conn.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
         print(f'  {table}: {count} rows')
 

@@ -53,7 +53,7 @@ copy engine\cc-connect-config.toml %USERPROFILE%\.cc-connect\config.toml
 
 # 编辑配置，填入实际值：
 # - app_id / token：QQ 开放平台获取
-# - work_dir：Obsidian 库路径
+# - work_dir：cost-engineering engine 目录路径
 # - speech.groq.api_key：Groq API 密钥（https://console.groq.com/）
 # - admin_from：你的 QQ 号（可选）
 # - 刷新命令的 exec 路径

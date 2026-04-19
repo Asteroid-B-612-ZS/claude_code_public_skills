@@ -69,7 +69,7 @@ Write-Host ""
 Write-Host "=== 安装完成 ===" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "使用方法：" -ForegroundColor White
-Write-Host "  在 Claude Code 中输入触发词：入库 / 整理 / 查成本 / 换算 / 看板"
+Write-Host "  在 Claude Code 中描述成本数据即可入库，或使用：查成本 / 换算 / 看板"
 Write-Host ""
 Write-Host "数据库路径：$dbPath"
 Write-Host "SKILL 路径：$SKILL_DEST"
