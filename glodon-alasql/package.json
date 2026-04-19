@@ -1,0 +1,10 @@
+{
+  "name": "glodon-alasql",
+  "version": "1.0.0",
+  "description": "广联达清单计价Excel分析工具",
+  "private": true,
+  "dependencies": {
+    "alasql": "^4.17.0",
+    "xlsx": "^0.18.5"
+  }
+}
