@@ -56,9 +56,9 @@ if (Test-Path $dbPath) {
 }
 
 # 5. 安装 Python 依赖
-$hasFastApi = & $pythonCmd -c "import fastapi; print('ok')" 2>&1
-if ($hasFastApi -ne "ok") {
-    Write-Host "[INFO] 安装 Python 依赖..." -ForegroundColor Yellow
+$hasDeps = & $pythonCmd -c "import openpyxl; print('ok')" 2>&1
+if ($hasDeps -ne "ok") {
+    Write-Host "[INFO] 安装 Python 依赖（openpyxl, fastapi, uvicorn）..." -ForegroundColor Yellow
     & $pythonCmd -m pip install -r (Join-Path $ENGINE_DIR "requirements.txt") --quiet
     Write-Host "[OK] 依赖安装完成" -ForegroundColor Green
 } else {
@@ -66,10 +66,12 @@ if ($hasFastApi -ne "ok") {
 }
 
 Write-Host ""
-Write-Host "=== 安装完成 ===" -ForegroundColor Cyan
+Write-Host "=== 安装完成（V3.3）===" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "使用方法：" -ForegroundColor White
-Write-Host "  在 Claude Code 中描述成本数据即可入库，或使用：查成本 / 换算 / 看板"
+Write-Host "  入库（QQ Bot）：发送 /入库 钢筋 5500元/t → 写入待审核 Excel"
+Write-Host "  审核入库：在 Excel 中标记已审核 → python cost_db.py commit"
+Write-Host "  查询/换算/看板：查成本 / 换算 / 看板"
 Write-Host ""
 Write-Host "数据库路径：$dbPath"
 Write-Host "SKILL 路径：$SKILL_DEST"
