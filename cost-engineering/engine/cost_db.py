@@ -1488,7 +1488,8 @@ def main():
             cmd_pending_list()
         elif cmd == 'insert':
             params = parse_args(rest)
-            insert_record(params)
+            print('[注意] insert 已废弃，自动转为 pending 写入待审核 Excel')
+            pending_record(params)
         elif cmd == 'update':
             if len(rest) < 3:
                 print('用法：update <id> <字段> <值>')
