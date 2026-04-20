@@ -1,76 +1,52 @@
 # cc-connect 配置模板 — 工程造价成本数据 QQ Bot 集成
 # 使用方法：复制本文件到 ~/.cc-connect/config.toml 并填入实际值
 
-# ── 基础设置 ──
+data_dir = ""
+attachment_send = ""
+language = "zh"
 
-[platform]
-name = "qqbot"                          # 平台类型：QQ 机器人官方
-app_id = "YOUR_APP_ID"                  # QQ 开放平台 AppID
-token = "YOUR_TOKEN"                    # QQ 开放平台 Token
-sandbox = false                         # 沙箱模式（调试用）
-markdown_support = true                 # 启用 Markdown 渲染
+[[projects]]
+  name = "my-project"
+  admin_from = "*"                            # 管理员 QQ 号（* 表示全部放行）
 
-[agent]
-name = "claudecode"                     # AI 后端：Claude Code
-mode = "auto"                           # 工作模式：auto 自动执行
-allowed_tools = [                       # 允许的工具列表
-    "Read", "Grep", "Glob",
-    "Bash", "Edit", "Write"
-]
+  [projects.agent]
+    type = "claudecode"
+    [projects.agent.options]
+      mode = "auto"                            # auto = 自动执行（推荐）
+      work_dir = "YOUR_OBSIDIAN_VAULT_PATH"    # Obsidian 库根目录
 
-# ── 工作目录 ──
-# 指向 cost-engineering engine 目录（cost_db.py 所在位置）
-work_dir = "YOUR_ENGINE_DIR"
+  [[projects.platforms]]
+    type = "qqbot"
+    [projects.platforms.options]
+      allow_from = "*"
+      app_id = "YOUR_APP_ID"
+      app_secret = "YOUR_APP_SECRET"
+      markdown_support = true
+      sandbox = false
+      share_session_in_channel = false
 
-# ── 语音转文字 ──
-# 需要安装 ffmpeg：winget install ffmpeg
-# 支持三种 STT 提供商，取消注释你想用的那个
+  # ── 成本数据命令 ──
 
-[speech]
-enabled = true
-provider = "groq"                       # 可选：groq / openai / qwen
-language = "zh"                         # 语言：中文
+  [[projects.commands]]
+    name = "入库"
+    description = "录入成本数据（写入待审核 Excel）"
+    prompt = """入库以下成本数据：{{args}}。
 
-# Groq（推荐，免费额度充足）
-[speech.groq]
-api_key = "YOUR_GROQ_API_KEY"
-model = "whisper-large-v3-turbo"
-
-# OpenAI Whisper
-# [speech.openai]
-# api_key = "YOUR_OPENAI_API_KEY"
-# model = "whisper-1"
-
-# 阿里云 Qwen
-# [speech.qwen]
-# api_key = "YOUR_DASHSCOPE_API_KEY"
-# model = "sensevoice-v1"
-
-# ── 管理员 ──
-# 设置你的 QQ 号以启用特权命令（/refresh 等）
-# admin_from = "YOUR_QQ_NUMBER"
-
-# ── 自定义命令 ──
-# 通过 QQ 发送 /入库 钢筋 5500元 即可触发
-
-[[commands]]
-name = "入库"
-description = "录入成本数据（待审核）"
-prompt = """入库以下成本数据：{{args}}。
-
-请按以下步骤处理：
+请严格按以下步骤处理：
 1. 从用户输入中提取字段（名称、单价、单位、日期、项目等）
 2. 标准化名称 → 查数据字典匹配
-3. 归一化单位 → 查单位标准表
-4. 校验价格 → 检查是否在合理区间
+3. 归一化单位（去掉"元/"前缀，如"元/m²"→"m²"）
+4. 校验价格区间
 5. 异常时标记为"待核实"
-6. 执行 python cost_db.py pending 写入待审核 Excel
-7. 简要汇报写入结果（包含文件路径和校验警告）"""
+6. 执行 `python cost_db.py pending` 写入待审核 Excel
+7. 简要汇报写入结果（包含文件路径和校验警告）
 
-[[commands]]
-name = "查成本"
-description = "查询历史价格"
-prompt = """查询成本数据库中与「{{args}}」相关的价格记录。
+重要：必须使用 pending 命令写入待审核 Excel，不要使用 insert 直接入库！"""
+
+  [[projects.commands]]
+    name = "查成本"
+    description = "查询历史价格"
+    prompt = """查询成本数据库中与「{{args}}」相关的价格记录。
 
 请按以下步骤处理：
 1. 使用 python cost_db.py query 执行搜索
@@ -78,70 +54,97 @@ prompt = """查询成本数据库中与「{{args}}」相关的价格记录。
 3. 如有多条记录，计算平均价、最高价、最低价
 4. 简要汇报查询结果和价格趋势"""
 
-[[commands]]
-name = "看板"
-description = "生成价格看板"
-prompt = """运行 python cost_db.py dashboard 生成价格看板。
+  [[projects.commands]]
+    name = "看板"
+    description = "生成价格看板"
+    prompt = """运行 python cost_db.py dashboard 生成价格看板。
 
 读取生成的看板文件，汇报关键信息：
 1. 各成本项最新价格
 2. 近期价格变动
 3. 异常提醒"""
 
-[[commands]]
-name = "换算"
-description = "执行单位换算"
-prompt = """对记录 {{1}} 执行换算：{{2*}}
+  [[projects.commands]]
+    name = "换算"
+    description = "执行单位换算"
+    prompt = """对记录 {{1}} 执行换算：{{2*}}
 
 请按以下步骤处理：
 1. 确认源记录和换算公式
 2. 使用 python cost_db.py convert 执行换算
 3. 汇报换算结果"""
 
-[[commands]]
-name = "刷新"
-description = "刷新看板和 JSON 导出"
-exec = "cd 'YOUR_ENGINE_DIR' && python cost_db.py dashboard"
+  [[projects.commands]]
+    name = "刷新"
+    description = "刷新看板"
+    exec = "cd 'YOUR_ENGINE_DIR' && python cost_db.py dashboard"
 
-[[commands]]
-name = "识别"
-description = "OCR 识别图片中的报价信息（待审核）"
-prompt = """识别图片中的成本/报价信息。
+  [[projects.commands]]
+    name = "识别"
+    description = "OCR 识别图片中的报价信息（写入待审核 Excel）"
+    prompt = """识别图片中的成本/报价信息。
 
 请按以下步骤处理：
 1. 读取用户发送的图片
 2. 识别其中的材料名称、单价、单位、供应商等信息
 3. 按入库流程标准化并校验
-4. 确认后执行 python cost_db.py pending 写入待审核文件
-5. 汇报识别和写入结果（包含文件路径和校验警告）"""
+4. 确认后执行 `python cost_db.py pending` 写入待审核文件
+5. 汇报识别和写入结果（包含文件路径和校验警告）
 
-# ── 命令别名 ──
-# 在 QQ 中直接发送中文触发词即可执行对应命令
+重要：必须使用 pending 命令写入待审核 Excel，不要使用 insert 直接入库！"""
 
-[[aliases]]
-name = "入库"
-command = "/入库"
+  # ── 命令别名 ──
 
-[[aliases]]
-name = "查询"
-command = "/查成本"
+  [[projects.aliases]]
+    name = "入库"
+    command = "/入库"
 
-[[aliases]]
-name = "查"
-command = "/查成本"
+  [[projects.aliases]]
+    name = "查询"
+    command = "/查成本"
 
-[[aliases]]
-name = "看板"
-command = "/看板"
+  [[projects.aliases]]
+    name = "查"
+    command = "/查成本"
 
-[[aliases]]
-name = "换算"
-command = "/换算"
+  [[projects.aliases]]
+    name = "看板"
+    command = "/看板"
 
-[[aliases]]
-name = "识别"
-command = "/识别"
+  [[projects.aliases]]
+    name = "换算"
+    command = "/换算"
 
-[[aliases]]
-name = "刷新"
-command = "/刷新"
+  [[projects.aliases]]
+    name = "识别"
+    command = "/识别"
+
+  [[projects.aliases]]
+    name = "刷新"
+    command = "/刷新"
+
+[log]
+  level = "info"
+
+# ── 语音转文字 ──
+# 需要安装 ffmpeg：winget install ffmpeg
+
+[speech]
+  enabled = false
+  provider = ""
+  language = ""
+  [speech.groq]
+    api_key = ""
+    model = "whisper-large-v3-turbo"
+
+[tts]
+  enabled = false
+
+[webhook]
+  port = 0
+
+[bridge]
+  port = 0
+
+[management]
+  port = 0
