@@ -22,6 +22,7 @@ import sys
 import re
 import json
 import sqlite3
+import time
 from datetime import datetime
 
 # ── Paths ──
@@ -30,6 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get('COST_DB_PATH', os.path.join(HERE, '成本数据.db'))
 DASHBOARD_PATH = os.path.join(HERE, '成本查询.md')
 EXPORT_PATH = os.path.join(HERE, '成本数据_export.json')
+PENDING_DIR = os.path.dirname(os.path.abspath(DB_PATH))
 
 # ── DB Helpers ──
 
@@ -1050,6 +1052,387 @@ def parse_args(args):
     return params
 
 
+# ── Pending Excel (待审核中转) ──
+
+# Excel 列定义：列标题 → (参数中文名, 是否必填)
+PENDING_COLUMNS = [
+    ('批次号', False),
+    ('序号', False),
+    ('日期', True),
+    ('大类', True),
+    ('名称', True),
+    ('规格', False),
+    ('单价', True),
+    ('单位', True),
+    ('计税方式', False),
+    ('询价方式', False),
+    ('报价人', False),
+    ('地区', False),
+    ('项目', False),
+    ('录入设备', False),
+    ('原始文件', False),
+    ('人工费', False),
+    ('材料费', False),
+    ('机械费', False),
+    ('备注', False),
+    ('校验结果', False),
+    ('审核状态', False),
+    ('入库结果', False),
+]
+
+
+def _get_pending_path(date_str=None):
+    """Get the pending Excel file path for a given date."""
+    if not date_str:
+        date_str = datetime.now().strftime('%Y-%m-%d')
+    return os.path.join(PENDING_DIR, f'待审核_{date_str}.xlsx')
+
+
+def _init_pending_wb(ws):
+    """Initialize a pending worksheet with headers and formatting."""
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    header_font = Font(bold=True, size=11)
+    header_fill = PatternFill('solid', fgColor='FFF2CC')
+    center_align = Alignment(horizontal='center', vertical='center')
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin'))
+
+    for col_idx, (title, _) in enumerate(PENDING_COLUMNS, 1):
+        cell = ws.cell(row=1, column=col_idx, value=title)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = thin_border
+
+    # Column widths
+    col_widths = {
+        '批次号': 20, '序号': 6, '日期': 12, '大类': 10, '名称': 12,
+        '规格': 12, '单价': 10, '单位': 10, '计税方式': 10, '询价方式': 12,
+        '报价人': 10, '地区': 10, '项目': 16, '录入设备': 10, '原始文件': 16,
+        '人工费': 10, '材料费': 10, '机械费': 10, '备注': 20,
+        '校验结果': 30, '审核状态': 10, '入库结果': 16,
+    }
+    for col_idx, (title, _) in enumerate(PENDING_COLUMNS, 1):
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = \
+            col_widths.get(title, 12)
+
+    # Data validation for 审核状态 column (U)
+    status_col = 21  # 审核状态 is the 21st column
+    status_letter = ws.cell(row=1, column=status_col).column_letter
+    dv = DataValidation(type='list', formula1='"待审核,已审核,已拒绝"', allow_blank=False)
+    dv.error = '请选择：待审核、已审核、已拒绝'
+    dv.errorTitle = '无效输入'
+    ws.add_data_validation(dv)
+    dv.add(f'{status_letter}2:{status_letter}1000')
+
+    ws.auto_filter.ref = ws.dimensions
+    ws.freeze_panes = 'C2'
+
+
+def pending_record(params: dict) -> str:
+    """Write pending data to Excel for review. Returns the file path."""
+    import openpyxl
+    from openpyxl.styles import PatternFill
+
+    name = params.get('名称') or params.get('name')
+    category = params.get('大类') or params.get('category')
+    price = float(params.get('单价') or params.get('price') or 0)
+    unit = params.get('单位') or params.get('unit')
+    date = params.get('日期') or params.get('date')
+
+    if not name or not category or not price or not unit or not date:
+        raise ValueError('缺少必填字段（日期/大类/名称/单价/单位）')
+
+    # Validate and normalize via DB (read-only)
+    conn = open_db()
+    try:
+        normed_unit = normalize_unit(unit, conn)
+
+        # Run validations (read-only) — gracefully handle missing tables
+        validation_warnings = []
+        try:
+            validation_warnings.extend(validate_price(conn, name, normed_unit, price, category))
+        except Exception:
+            pass  # validation_rule table may not exist in older DBs
+        # For duplicate/trend checks, we need item_id (may not exist yet)
+        existing_items = run_query(conn,
+            'SELECT id FROM cost_item WHERE name = ? AND category = ?',
+            (name, category))
+        if existing_items:
+            item_id = existing_items[0]['id']
+            source_person = params.get('报价人') or params.get('source_person') or ''
+            location = params.get('地区') or params.get('location') or ''
+            try:
+                validation_warnings.extend(check_duplicate(conn, item_id, date, price, source_person))
+            except Exception:
+                pass
+            try:
+                validation_warnings.extend(check_trend(conn, name, normed_unit, location, price))
+            except Exception:
+                pass
+
+        # Check breakdown
+        labor = params.get('人工费')
+        material = params.get('材料费')
+        equipment = params.get('机械费')
+        labor = float(labor) if labor else None
+        material = float(material) if material else None
+        equipment = float(equipment) if equipment else None
+        if labor is not None or material is not None or equipment is not None:
+            s = (labor or 0) + (material or 0) + (equipment or 0)
+            if price > 0 and abs(s - price) / price > 0.05:
+                pct = (s - price) / price * 100
+                validation_warnings.append(
+                    f'工料机合计{s}与单价偏差{pct:.1f}%')
+
+        # Check if name in validation rules
+        try:
+            rule_check = run_query(conn,
+                'SELECT id FROM validation_rule WHERE name = ? LIMIT 1', (name,))
+            if not rule_check:
+                validation_warnings.append('待补充词条')
+        except Exception:
+            pass  # validation_rule table may not exist
+    finally:
+        conn.close()
+
+    validation_str = '; '.join(validation_warnings) if validation_warnings else ''
+
+    # Ensure pending dir exists
+    os.makedirs(PENDING_DIR, exist_ok=True)
+
+    batch_no = 'P-' + datetime.now().strftime('%Y%m%d-%H%M%S')
+    excel_path = _get_pending_path(date)
+
+    # Write to Excel with retry for concurrent access
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            if os.path.exists(excel_path):
+                wb = openpyxl.load_workbook(excel_path)
+                ws = wb.active
+                row_idx = ws.max_row + 1
+                # Determine sequence number
+                seq = 1
+                for r in range(2, ws.max_row + 1):
+                    if ws.cell(row=r, column=1).value and \
+                       ws.cell(row=r, column=1).value.startswith(batch_no[:11]):
+                        seq += 1
+            else:
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = '待审核'
+                _init_pending_wb(ws)
+                row_idx = 2
+                seq = 1
+
+            # Column values in order
+            values = [
+                batch_no,                                    # A 批次号
+                seq,                                         # B 序号
+                date,                                        # C 日期
+                category,                                    # D 大类
+                name,                                        # E 名称
+                params.get('规格') or params.get('spec') or '',  # F 规格
+                price,                                       # G 单价
+                normed_unit,                                 # H 单位
+                params.get('计税方式') or params.get('tax_method') or '不详',  # I
+                params.get('询价方式') or params.get('price_type') or '',     # J
+                params.get('报价人') or params.get('source_person') or '',   # K
+                params.get('地区') or params.get('location') or '',         # L
+                params.get('项目') or params.get('project_name') or '',     # M
+                params.get('录入设备') or params.get('input_device') or 'QQ',  # N
+                params.get('原始文件') or params.get('source_file') or '',   # O
+                labor if labor is not None else '',           # P 人工费
+                material if material is not None else '',     # Q 材料费
+                equipment if equipment is not None else '',   # R 机械费
+                params.get('备注') or params.get('remark') or '',  # S 备注
+                validation_str,                              # T 校验结果
+                '待审核',                                     # U 审核状态
+                '',                                          # V 入库结果
+            ]
+
+            warn_fill = PatternFill('solid', fgColor='FCE4EC')
+            for col_idx, val in enumerate(values, 1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=val)
+                if validation_warnings:
+                    cell.fill = warn_fill
+
+            wb.save(excel_path)
+            break
+        except (PermissionError, OSError):
+            if attempt < max_retries - 1:
+                time.sleep(0.5)
+            else:
+                raise
+
+    result_msg = f'已写入待审核文件：{excel_path}'
+    if validation_warnings:
+        result_msg += f'\n  校验警告：{validation_str}'
+    print(result_msg)
+    return excel_path
+
+
+def commit_pending(excel_path=None) -> dict:
+    """Read reviewed Excel, commit approved rows to SQLite.
+    Returns stats dict.
+    """
+    import openpyxl
+
+    if not excel_path:
+        # Find latest pending file
+        if not os.path.exists(PENDING_DIR):
+            raise FileNotFoundError('待审核目录不存在，请先执行 pending 命令')
+        files = sorted(
+            [f for f in os.listdir(PENDING_DIR) if f.startswith('待审核_') and f.endswith('.xlsx')],
+            reverse=True)
+        if not files:
+            raise FileNotFoundError('未找到待审核文件')
+        excel_path = os.path.join(PENDING_DIR, files[0])
+
+    if not os.path.exists(excel_path):
+        raise FileNotFoundError(f'文件不存在：{excel_path}')
+
+    wb = openpyxl.load_workbook(excel_path)
+    ws = wb.active
+
+    # Read header row to build column index
+    headers = {}
+    for col_idx in range(1, ws.max_column + 1):
+        val = ws.cell(row=1, column=col_idx).value
+        if val:
+            headers[val] = col_idx
+
+    required_headers = ['日期', '大类', '名称', '单价', '单位', '审核状态', '入库结果']
+    for h in required_headers:
+        if h not in headers:
+            raise ValueError(f'Excel 缺少必要列：{h}')
+
+    stats = {'total': 0, 'committed': 0, 'skipped': 0, 'errors': [], 'details': []}
+
+    for row_idx in range(2, ws.max_row + 1):
+        # Skip rows already processed
+        result_col = headers.get('入库结果')
+        if result_col:
+            existing_result = ws.cell(row=row_idx, column=result_col).value
+            if existing_result and str(existing_result).strip():
+                stats['skipped'] += 1
+                continue
+
+        status_val = ws.cell(row=row_idx, column=headers['审核状态']).value
+        if status_val != '已审核':
+            stats['skipped'] += 1
+            continue
+
+        stats['total'] += 1
+
+        # Build params dict
+        params = {}
+        col_map = {
+            '日期': '日期', '大类': '大类', '名称': '名称', '单价': '单价',
+            '单位': '单位', '计税方式': '计税方式', '询价方式': '询价方式',
+            '报价人': '报价人', '地区': '地区', '项目': '项目', '规格': '规格',
+            '录入设备': '录入设备', '原始文件': '原始文件', '备注': '备注',
+        }
+        for excel_col, param_key in col_map.items():
+            if excel_col in headers:
+                val = ws.cell(row=row_idx, column=headers[excel_col]).value
+                if val is not None and str(val).strip():
+                    params[param_key] = str(val).strip() if not isinstance(val, (int, float)) else val
+
+        # Component breakdown
+        for comp_key in ['人工费', '材料费', '机械费']:
+            if comp_key in headers:
+                val = ws.cell(row=row_idx, column=headers[comp_key]).value
+                if val is not None and str(val).strip():
+                    params[comp_key] = float(val)
+
+        # Append validation result from Excel to remark
+        if '校验结果' in headers:
+            val = ws.cell(row=row_idx, column=headers['校验结果']).value
+            if val and str(val).strip():
+                remark = params.get('备注', '')
+                params['备注'] = f'{remark} [Excel校验: {val}]'.strip()
+
+        try:
+            new_id = insert_record(params)
+            stats['committed'] += 1
+            stats['details'].append({'row': row_idx, 'id': new_id, 'status': 'ok'})
+            # Update Excel
+            if result_col:
+                ws.cell(row=row_idx, column=result_col, value=f'已入库 #{new_id}')
+        except Exception as e:
+            stats['errors'].append({'row': row_idx, 'error': str(e)})
+            stats['details'].append({'row': row_idx, 'status': 'error', 'error': str(e)})
+            if result_col:
+                ws.cell(row=row_idx, column=result_col, value=f'失败: {e}')
+
+    wb.save(excel_path)
+
+    print(f'审核入库完成：')
+    print(f'  已入库：{stats["committed"]} 条')
+    print(f'  跳过：{stats["skipped"]} 条')
+    if stats['errors']:
+        print(f'  失败：{len(stats["errors"])} 条')
+        for e in stats['errors']:
+            print(f'    第{e["row"]}行：{e["error"]}')
+    return stats
+
+
+def cmd_pending_list():
+    """List all pending Excel files with stats."""
+    import openpyxl
+
+    if not os.path.exists(PENDING_DIR):
+        print('待审核目录不存在')
+        return
+
+    files = sorted(
+        [f for f in os.listdir(PENDING_DIR) if f.startswith('待审核_') and f.endswith('.xlsx')],
+        reverse=True)
+
+    if not files:
+        print('暂无待审核文件')
+        return
+
+    print(f'共 {len(files)} 个待审核文件：\n')
+    for f in files:
+        fpath = os.path.join(PENDING_DIR, f)
+        try:
+            wb = openpyxl.load_workbook(fpath, read_only=True)
+            ws = wb.active
+            total_rows = ws.max_row - 1  # exclude header
+            pending = 0
+            approved = 0
+            rejected = 0
+            committed = 0
+            # Read headers
+            headers = {}
+            for col_idx in range(1, ws.max_column + 1):
+                val = ws.cell(row=1, column=col_idx).value
+                if val:
+                    headers[val] = col_idx
+            for row_idx in range(2, ws.max_row + 1):
+                status = ws.cell(row=row_idx, column=headers.get('审核状态', 21)).value or ''
+                result = ws.cell(row=row_idx, column=headers.get('入库结果', 22)).value or ''
+                if str(result).strip():
+                    committed += 1
+                elif status == '已审核':
+                    approved += 1
+                elif status == '已拒绝':
+                    rejected += 1
+                else:
+                    pending += 1
+            wb.close()
+            print(f'  {f}')
+            print(f'    总计 {total_rows} 条 | 待审核 {pending} | 已审核 {approved} | 已拒绝 {rejected} | 已入库 {committed}')
+        except Exception as e:
+            print(f'  {f} (读取失败: {e})')
+
+
 # ── Main CLI ──
 
 def main():
@@ -1058,7 +1441,10 @@ def main():
         print('成本数据库工具 V3.2\n')
         print('用法：python cost_db.py <command> [args]\n')
         print('命令：')
-        print('  insert --日期 ...    插入记录（自动创建成本项 + 自动校验）')
+        print('  pending --日期 ...   写入待审核 Excel（QQ Bot 入库推荐）')
+        print('  commit [--file X]    将已审核数据导入 SQLite')
+        print('  pending-list         列出待审核文件')
+        print('  insert --日期 ...    直接插入记录（手动/调试用）')
         print('  update <id> <f> <v>  更新记录')
         print('  delete <id>          删除记录（级联删除）')
         print('  query "<sql>"        SQL 查询')
@@ -1075,7 +1461,29 @@ def main():
     rest = argv[1:]
 
     try:
-        if cmd == 'insert':
+        if cmd == 'pending':
+            params = parse_args(rest)
+            pending_record(params)
+        elif cmd == 'commit':
+            p = parse_args(rest)
+            if p.get('list'):
+                cmd_pending_list()
+            elif p.get('all'):
+                # Commit all pending files
+                if os.path.exists(PENDING_DIR):
+                    files = sorted(f for f in os.listdir(PENDING_DIR)
+                                   if f.startswith('待审核_') and f.endswith('.xlsx'))
+                    for f in files:
+                        fpath = os.path.join(PENDING_DIR, f)
+                        print(f'\n--- 处理：{f} ---')
+                        commit_pending(fpath)
+                else:
+                    print('待审核目录不存在')
+            else:
+                commit_pending(p.get('file'))
+        elif cmd == 'pending-list':
+            cmd_pending_list()
+        elif cmd == 'insert':
             params = parse_args(rest)
             insert_record(params)
         elif cmd == 'update':
