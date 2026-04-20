@@ -3,8 +3,8 @@
 
 启动：python api_server.py
 端点：
-  POST /import       — 接收 JSON，自动入库
-  POST /import/raw   — 接收 GLM 原始文本入库
+  POST /import       — [已废弃] 接收 JSON，直接入库（建议改用 QQ Bot + pending/commit）
+  POST /import/raw   — [已废弃] 接收 GLM 原始文本（建议改用 QQ Bot + pending/commit）
   GET  /query        — 按关键词搜索价格
   POST /confirm      — 确认待核实记录
   GET  /stats        — 数据库统计
