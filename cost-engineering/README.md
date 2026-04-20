@@ -87,7 +87,7 @@ pip install -r requirements.txt
 
 | 功能 | 方式 | 示例 |
 |------|------|------|
-| 录入（待审核） | 描述数据 | `入库 钢筋 5500 元/t 上海 信息价` |
+| 录入（待审核） | 描述数据 | `入库 钢筋 5500 t 上海 信息价` |
 | 审核入库 | commit 命令 | `python cost_db.py commit` |
 | 查询 | 搜索关键词 | `查成本 钢筋` |
 | 换算 | 指定公式 | `换算 1 钢筋(吨→㎡,50kg/m²)` |
@@ -162,7 +162,7 @@ cd engine
 # ── 入库（推荐：两阶段审核） ──
 
 # 写入待审核 Excel（QQ Bot 入库推荐）
-python cost_db.py pending --日期 2026-04-19 --大类 人工费 --名称 钢筋 --单价 5500 --单位 元/t
+python cost_db.py pending --日期 2026-04-19 --大类 人工费 --名称 钢筋 --单价 5500 --单位 t
 
 # 列出待审核文件
 python cost_db.py pending-list
@@ -174,7 +174,7 @@ python cost_db.py commit --file PATH        # 提交指定文件
 
 # ── 直接入库（手动/调试用） ──
 
-python cost_db.py insert --日期 2026-04-19 --大类 人工费 --名称 钢筋 --单价 5500 --单位 元/t
+python cost_db.py insert --日期 2026-04-19 --大类 人工费 --名称 钢筋 --单价 5500 --单位 t
 
 # 查询
 python cost_db.py query "SELECT p.*, i.name, i.category FROM cost_price p JOIN cost_item i ON p.item_id = i.id"
