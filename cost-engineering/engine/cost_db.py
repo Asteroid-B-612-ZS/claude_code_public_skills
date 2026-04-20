@@ -83,11 +83,14 @@ def load_unit_map(conn):
 
 def normalize_unit(unit, conn):
     umap = load_unit_map(conn)
+    # Strip "元/" prefix — default settlement is RMB, no need to repeat
+    unit = re.sub(r'^元/', '', unit)
     if unit in umap:
         return umap[unit]
+    # Handle compound units like "台·月" → try mapping the base part
     m = re.match(r'^(.+\/)(.+)$', unit)
     if m and m.group(2) in umap:
-        return m.group(1) + umap[m.group(2)]
+        return umap[m.group(2)]
     return unit
 
 
