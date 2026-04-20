@@ -16,13 +16,26 @@ skill.md（领域知识 + 工作流程）
 engine/cost_db.py（SQLite 数据库 CLI）
     │
     ├── 8 表关系型结构（含 validation_rule、conversion_formula）
+    ├── pending / commit（待审核 Excel → 审核入库，两阶段流程）
     ├── insert / update / delete / query / dashboard
     ├── convert / convert-tax（单位/税额换算）
     ├── 自动校验（价格区间 / 重复检测 / 趋势监控）
     └── 自动导出 JSON（移动端查询用）
           │
           ▼
-engine/api_server.py（HTTP API，移动端实时入库）
+engine/api_server.py（HTTP API，已废弃，保留向后兼容）
+```
+
+### 入库流程（两阶段审核）
+
+```
+QQ Bot / 手动输入
+      ↓
+  python cost_db.py pending → 写入待审核 Excel（自动校验结果标注在 Excel 中）
+      ↓
+  用户在 Excel 中标记"已审核"或"已拒绝"
+      ↓
+  python cost_db.py commit → 仅已审核数据导入 SQLite
 ```
 
 ## 安装
@@ -43,7 +56,7 @@ powershell -File install.ps1
 安装脚本会：
 1. 复制 `skill.md` → `~/.claude/skills/cost-entry.md`
 2. 初始化 SQLite 数据库（8 张表 + 预置标准数据）
-3. 安装 Python 依赖（fastapi、uvicorn）
+3. 安装 Python 依赖（fastapi、uvicorn、openpyxl）
 
 ### 手动安装
 
@@ -74,11 +87,13 @@ pip install -r requirements.txt
 
 | 功能 | 方式 | 示例 |
 |------|------|------|
-| 录入 | 描述数据 | `入库 钢筋 5500 元/t 上海 信息价` |
+| 录入（待审核） | 描述数据 | `入库 钢筋 5500 元/t 上海 信息价` |
+| 审核入库 | commit 命令 | `python cost_db.py commit` |
 | 查询 | 搜索关键词 | `查成本 钢筋` |
 | 换算 | 指定公式 | `换算 1 钢筋(吨→㎡,50kg/m²)` |
 | 看板 | 生成报告 | `看板` |
-| 识别 | OCR 图片 | `识别` |
+| 识别 | OCR 图片 | `识别`（识别后写入待审核 Excel） |
+| 待审核列表 | pending-list | `python cost_db.py pending-list` |
 
 ## 数据库结构
 
@@ -144,7 +159,21 @@ conversion_formula（单位换算公式，12 条）── 自包含
 ```bash
 cd engine
 
-# 入库（自动校验）
+# ── 入库（推荐：两阶段审核） ──
+
+# 写入待审核 Excel（QQ Bot 入库推荐）
+python cost_db.py pending --日期 2026-04-19 --大类 人工费 --名称 钢筋 --单价 5500 --单位 元/t
+
+# 列出待审核文件
+python cost_db.py pending-list
+
+# 审核后导入 SQLite（用户在 Excel 中标记"已审核"后执行）
+python cost_db.py commit                    # 提交最新待审核文件
+python cost_db.py commit --all              # 提交所有待审核文件
+python cost_db.py commit --file PATH        # 提交指定文件
+
+# ── 直接入库（手动/调试用） ──
+
 python cost_db.py insert --日期 2026-04-19 --大类 人工费 --名称 钢筋 --单价 5500 --单位 元/t
 
 # 查询
@@ -196,10 +225,12 @@ cc-connect.exe
 
 详细配置说明见 [docs/qq-integration.md](docs/qq-integration.md)。
 
-## HTTP API（移动端入口）
+## HTTP API（已废弃）
+
+> `/import` 和 `/import/raw` 端点已废弃，建议改用 QQ Bot + pending/commit 两阶段流程。
 
 ```bash
-# 启动服务
+# 启动服务（保留向后兼容）
 cd engine
 python api_server.py    # 监听 0.0.0.0:5000
 
@@ -209,8 +240,8 @@ COST_API_KEY=your_secret python api_server.py
 
 | 端点 | 方法 | 用途 | 认证 |
 |------|------|------|------|
-| `/import` | POST | 接收 JSON 自动入库 | 如配置了 API Key |
-| `/import/raw` | POST | 接收 GLM 原始文本 | 如配置了 API Key |
+| `/import` | POST | [已废弃] 接收 JSON 自动入库 | 如配置了 API Key |
+| `/import/raw` | POST | [已废弃] 接收 GLM 原始文本 | 如配置了 API Key |
 | `/query?q=` | GET | 关键词搜索价格 | 如配置了 API Key |
 | `/confirm` | POST | 确认待核实记录 | 如配置了 API Key |
 | `/stats` | GET | 数据库统计 | 如配置了 API Key |
@@ -239,6 +270,7 @@ cost-engineering/
 
 | 版本 | 日期 | 内容 |
 |------|------|------|
+| V3.3 | 2026-04-20 | 两阶段审核入库：pending 写入 Excel → 用户审核 → commit 导入 SQLite；废弃 iPhone 快捷指令直接入库；新增 openpyxl 依赖 |
 | V3.2 | 2026-04-19 | 自动校验引擎 + 安全加固 + 自包含（换算公式入库） |
 | V3.1 | 2026-04-18 | Python 迁移 + HTTP API + 关系型 SQLite |
 | V3.0 | 2026-04-18 | JSON 数据桥接，PC + iPhone 双端查询 |
@@ -248,6 +280,7 @@ cost-engineering/
 ## 依赖
 
 - **Python** 3.12+（数据库操作）
-- **fastapi** + **uvicorn**（仅 HTTP API）
+- **fastapi** + **uvicorn**（仅 HTTP API，已废弃）
+- **openpyxl** >= 3.1.0（待审核 Excel 读写）
 - **SQLite**（Python 内置，无需额外安装）
 - **Claude Code CLI**（SKILL 加载）
