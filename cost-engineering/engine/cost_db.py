@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""成本数据库工具 V3.2 (Python + sqlite3)
+"""成本数据库工具 V3.4 (Python + sqlite3)
 
 用法：python cost_db.py <command> [args]
 
 命令：
-  insert --日期 ...    插入记录（自动创建成本项 + 自动校验）
+  pending --日期 ...   写入待审核 Excel（QQ Bot 入库推荐）
+  commit [--file X]    将已审核数据导入 SQLite
+  pending-list         列出待审核文件
+  insert --日期 ...    [已废弃] 自动转为 pending
   update <id> <f> <v>  更新记录
   delete <id>          删除记录（级联删除）
   query "<sql>"        SQL 查询
@@ -32,6 +35,10 @@ DB_PATH = os.environ.get('COST_DB_PATH', os.path.join(HERE, '成本数据.db'))
 DASHBOARD_PATH = os.path.join(HERE, '成本查询.md')
 EXPORT_PATH = os.path.join(HERE, '成本数据_export.json')
 PENDING_DIR = os.path.dirname(os.path.abspath(DB_PATH))
+PENDING_QUEUE_PATH = os.path.join(PENDING_DIR, 'pending_queue.json')
+
+# Caller protection: only commit_pending may call insert_record
+_commit_in_progress = False
 
 # ── DB Helpers ──
 
@@ -296,7 +303,14 @@ def _safe_eval_formula(formula_text):
 # ── Public API (importable by api_server.py) ──
 
 def insert_record(params: dict) -> int:
-    """Insert a price record. Returns the new ID. Raises on error."""
+    """Insert a price record. Returns the new ID. Raises on error.
+
+    Only callable from commit_pending() — enforced via _commit_in_progress flag.
+    """
+    if not _commit_in_progress:
+        raise PermissionError(
+            'insert_record 仅允许从 commit_pending 调用。'
+            '请使用 pending 命令写入待审核 Excel。')
     conn = open_db()
     try:
         name = params.get('名称') or params.get('name')
@@ -1091,6 +1105,109 @@ def _get_pending_path(date_str=None):
     return os.path.join(PENDING_DIR, f'待审核_{date_str}.xlsx')
 
 
+def _write_to_json_queue(params: dict, validation_str: str, batch_no: str, normed_unit: str) -> str:
+    """Write pending data to JSON queue when Excel is locked."""
+    os.makedirs(PENDING_DIR, exist_ok=True)
+    queue = []
+    if os.path.exists(PENDING_QUEUE_PATH):
+        with open(PENDING_QUEUE_PATH, 'r', encoding='utf-8') as f:
+            queue = json.load(f)
+    queue.append({
+        'params': params,
+        'validation': validation_str,
+        'batch_no': batch_no,
+        'normed_unit': normed_unit,
+        'queued_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    })
+    with open(PENDING_QUEUE_PATH, 'w', encoding='utf-8') as f:
+        json.dump(queue, f, ensure_ascii=False, indent=2)
+    return PENDING_QUEUE_PATH
+
+
+def _flush_json_queue() -> int:
+    """Move queued JSON items into pending Excel. Returns count flushed."""
+    import openpyxl
+    from openpyxl.styles import PatternFill
+
+    if not os.path.exists(PENDING_QUEUE_PATH):
+        return 0
+    with open(PENDING_QUEUE_PATH, 'r', encoding='utf-8') as f:
+        queue = json.load(f)
+    if not queue:
+        return 0
+
+    flushed = 0
+    remaining = []
+    for item in queue:
+        params = item['params']
+        validation_str = item.get('validation', '')
+        batch_no = item.get('batch_no', 'P-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
+        normed_unit = item.get('normed_unit', params.get('单位', ''))
+
+        date = params.get('日期') or params.get('date', '')
+        excel_path = _get_pending_path(date)
+
+        try:
+            if os.path.exists(excel_path):
+                wb = openpyxl.load_workbook(excel_path)
+                ws = wb.active
+                row_idx = ws.max_row + 1
+                seq = 1
+            else:
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                ws.title = '待审核'
+                _init_pending_wb(ws)
+                row_idx = 2
+                seq = 1
+
+            price = float(params.get('单价') or params.get('price') or 0)
+            labor = params.get('人工费')
+            material = params.get('材料费')
+            equipment = params.get('机械费')
+            has_warnings = bool(validation_str)
+
+            values = [
+                batch_no, date,
+                params.get('大类') or params.get('category') or '',
+                params.get('名称') or params.get('name') or '',
+                params.get('规格') or params.get('spec') or '',
+                price, normed_unit,
+                params.get('计税方式') or params.get('tax_method') or '不详',
+                params.get('询价方式') or params.get('price_type') or '',
+                params.get('报价人') or params.get('source_person') or '',
+                params.get('地区') or params.get('location') or '',
+                params.get('项目') or params.get('project_name') or '',
+                params.get('录入设备') or params.get('input_device') or 'QQ',
+                params.get('原始文件') or params.get('source_file') or '',
+                float(labor) if labor else '',
+                float(material) if material else '',
+                float(equipment) if equipment else '',
+                params.get('备注') or params.get('remark') or '',
+                validation_str, '待审核', '',
+            ]
+
+            warn_fill = PatternFill('solid', fgColor='FCE4EC')
+            for col_idx, val in enumerate(values, 1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=val)
+                if has_warnings:
+                    cell.fill = warn_fill
+
+            wb.save(excel_path)
+            flushed += 1
+        except (PermissionError, OSError):
+            remaining.append(item)
+
+    # Update queue file with items that still couldn't be written
+    if remaining:
+        with open(PENDING_QUEUE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(remaining, f, ensure_ascii=False, indent=2)
+    else:
+        os.remove(PENDING_QUEUE_PATH)
+
+    return flushed
+
+
 def _init_pending_wb(ws):
     """Initialize a pending worksheet with headers and formatting."""
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -1136,7 +1253,11 @@ def _init_pending_wb(ws):
 
 
 def pending_record(params: dict) -> str:
-    """Write pending data to Excel for review. Returns the file path."""
+    """Write pending data to Excel for review. Returns the file path.
+
+    If Excel is locked, writes to pending_queue.json as fallback.
+    NEVER falls back to insert_record — pending is the only entry path.
+    """
     import openpyxl
     from openpyxl.styles import PatternFill
 
@@ -1270,7 +1391,14 @@ def pending_record(params: dict) -> str:
             if attempt < max_retries - 1:
                 time.sleep(0.5)
             else:
-                raise
+                # Excel is locked — fall back to JSON queue, NEVER to insert
+                queue_path = _write_to_json_queue(params, validation_str, batch_no, normed_unit)
+                result_msg = f'Excel 被占用，已写入 JSON 队列：{queue_path}'
+                if validation_warnings:
+                    result_msg += f'\n  校验警告：{validation_str}'
+                result_msg += '\n请关闭 Excel 后运行 commit --flush-queue 将队列数据转入 Excel'
+                print(result_msg)
+                return queue_path
 
     result_msg = f'已写入待审核文件：{excel_path}'
     if validation_warnings:
@@ -1282,7 +1410,11 @@ def pending_record(params: dict) -> str:
 def commit_pending(excel_path=None) -> dict:
     """Read reviewed Excel, commit approved rows to SQLite.
     Returns stats dict.
+
+    Only this function may call insert_record (enforced via _commit_in_progress flag).
+    Includes dedup: same date + name + price + source_person → skip with warning.
     """
+    global _commit_in_progress
     import openpyxl
 
     if not excel_path:
@@ -1315,8 +1447,10 @@ def commit_pending(excel_path=None) -> dict:
             raise ValueError(f'Excel 缺少必要列：{h}')
 
     stats = {'total': 0, 'committed': 0, 'skipped': 0, 'errors': [], 'details': []}
+    _commit_in_progress = True
 
-    for row_idx in range(2, ws.max_row + 1):
+    try:
+      for row_idx in range(2, ws.max_row + 1):
         # Skip rows already processed
         result_col = headers.get('入库结果')
         if result_col:
@@ -1360,6 +1494,30 @@ def commit_pending(excel_path=None) -> dict:
                 remark = params.get('备注', '')
                 params['备注'] = f'{remark} [Excel校验: {val}]'.strip()
 
+        # Dedup check: same date + name + price + source_person → skip
+        dup_name = params.get('名称', '')
+        dup_date = params.get('日期', '')
+        dup_price = params.get('单价', '')
+        dup_person = params.get('报价人', '')
+        if dup_name and dup_date and dup_price:
+            conn = open_db()
+            try:
+                dup_items = run_query(conn,
+                    'SELECT id FROM cost_item WHERE name = ?', (dup_name,))
+                if dup_items:
+                    dup_rows = run_query(conn,
+                        'SELECT id FROM cost_price WHERE item_id = ? AND date = ? AND price = ? AND source_person = ?',
+                        (dup_items[0]['id'], dup_date, float(dup_price), dup_person))
+                    if dup_rows:
+                        dup_msg = f'重复跳过: 已存在 #{dup_rows[0]["id"]}'
+                        stats['skipped'] += 1
+                        stats['details'].append({'row': row_idx, 'status': 'duplicate', 'error': dup_msg})
+                        if result_col:
+                            ws.cell(row=row_idx, column=result_col, value=f'重复 #{dup_rows[0]["id"]}')
+                        continue
+            finally:
+                conn.close()
+
         try:
             new_id = insert_record(params)
             stats['committed'] += 1
@@ -1373,7 +1531,9 @@ def commit_pending(excel_path=None) -> dict:
             if result_col:
                 ws.cell(row=row_idx, column=result_col, value=f'失败: {e}')
 
-    wb.save(excel_path)
+      wb.save(excel_path)
+    finally:
+      _commit_in_progress = False
 
     print(f'审核入库完成：')
     print(f'  已入库：{stats["committed"]} 条')
@@ -1441,11 +1601,12 @@ def cmd_pending_list():
 def main():
     argv = sys.argv[1:]
     if not argv:
-        print('成本数据库工具 V3.2\n')
+        print('成本数据库工具 V3.4\n')
         print('用法：python cost_db.py <command> [args]\n')
         print('命令：')
         print('  pending --日期 ...   写入待审核 Excel（QQ Bot 入库推荐）')
         print('  commit [--file X]    将已审核数据导入 SQLite')
+        print('  commit --flush-queue 将 JSON 队列数据转入待审核 Excel')
         print('  pending-list         列出待审核文件')
         print('  insert --日期 ...    直接插入记录（手动/调试用）')
         print('  update <id> <f> <v>  更新记录')
@@ -1471,6 +1632,12 @@ def main():
             p = parse_args(rest)
             if p.get('list'):
                 cmd_pending_list()
+            elif p.get('flush_queue') or p.get('flush-queue'):
+                flushed = _flush_json_queue()
+                if flushed > 0:
+                    print(f'已将 {flushed} 条队列数据转入待审核 Excel')
+                else:
+                    print('JSON 队列为空，无需处理')
             elif p.get('all'):
                 # Commit all pending files
                 if os.path.exists(PENDING_DIR):
