@@ -69,7 +69,7 @@ Write-Host ""
 Write-Host "=== 安装完成（V3.3）===" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "使用方法：" -ForegroundColor White
-Write-Host "  入库（QQ Bot）：发送 /入库 钢筋 5500元/t → 写入待审核 Excel"
+Write-Host "  入库（QQ Bot）：发送 /入库 钢筋 5500 t → 写入待审核 Excel"
 Write-Host "  审核入库：在 Excel 中标记已审核 → python cost_db.py commit"
 Write-Host "  查询/换算/看板：查成本 / 换算 / 看板"
 Write-Host ""
