@@ -1,7 +1,7 @@
 ---
 name: inbox-organizer
 description: Obsidian 每日整理 — 收件箱处理 + 日志分析 + 项目更新 + 系统控制台维护
-version: 260421.2
+version: 260422.1
 ---
 
 # Obsidian 每日整理 Skill
@@ -26,7 +26,7 @@ VAULT_ROOT = D:\iCloudDrive\iCloud~md~obsidian\QiZhi库
 
 收件箱:        {VAULT_ROOT}\00_收件箱\
 附件目录:      {VAULT_ROOT}\00_收件箱\附件\
-日志目录:      {VAULT_ROOT}\10_每日日志\
+日志目录:      {VAULT_ROOT}\10_每日日志\{yyyy-MM}\  （按年月分子文件夹，如 2026-04）
 项目目录:      {VAULT_ROOT}\20_工程项目\
 日志模板:      {VAULT_ROOT}\40_资源模板\日志模板.md
 项目模板:      {VAULT_ROOT}\40_资源模板\项目模板.md
@@ -138,11 +138,12 @@ cd "C:\Users\qizhi\.claude\skills\cost-engineering\engine" && python cost_db.py 
 
 对笔记型/混合型中的非成本内容，以及成本处理的校验结果，统一更新到 `_dashboard.md`：
 
-1. **确定目标日志**：`10_每日日志\{date}.md`（date 取笔记 frontmatter 的 date）
+1. **确定目标日志**：`10_每日日志\{yyyy-MM}\{date}.md`（yyyy-MM 取日期前7位，如 2026-04）
 2. **日志不存在时自动创建**：
+   - 先检查年月子文件夹 `10_每日日志\{yyyy-MM}\` 是否存在，不存在则创建
    - 读取 `40_资源模板\日志模板.md` 模板内容
    - 替换占位符：`{{date}}` → 日期，`{{time}}` → 当前时间
-   - 写入 `10_每日日志\{date}.md`
+   - 写入 `10_每日日志\{yyyy-MM}\{date}.md`
 3. **将整理结果更新到 `_dashboard.md`**：
    - `📁 项目状态` → 追加今日涉及的项目及简要状态
    - `💰 成本数据` → 追加今日入库的成本条目摘要
@@ -182,7 +183,7 @@ cd "C:\Users\qizhi\.claude\skills\cost-engineering\engine" && python cost_db.py 
 
 ### Step 7 — 分析当日日志
 
-1. 读取当日日志文件（`10_每日日志\{today}.md`），如果不存在则跳过此步
+1. 读取当日日志文件（`10_每日日志\{yyyy-MM}\{today}.md`，yyyy-MM 取 today 前7位），如果不存在则跳过此步
 2. **构建已知项目列表**：扫描 `20_工程项目\` 下的所有 `.md` 文件名（去掉 `.md` 后缀）作为已知项目名
 
 3. **按标题层级解析结构**（核心规则）：
@@ -224,7 +225,9 @@ cd "C:\Users\qizhi\.claude\skills\cost-engineering\engine" && python cost_db.py 
 
 6. 扫描范围仅限 `🧾 个人笔记` 区域，AI 区域中的内容不提取
 7. 无任何项目标注且 AI 无法推断时 → 整段归为日常，不报错
-8. **更新日志标签**：将 frontmatter 中的 `tags: [daily, journal, 待整理]` 改为 `tags: [daily, journal, 已整理]`（铁律例外：仅允许修改 tags 字段，不触碰正文内容）
+8. **更新日志标签和标题**（铁律例外：仅允许修改 tags 和 title 字段，不触碰正文内容）：
+   - tags: `[daily, journal, 待整理]` → `[daily, journal, 已整理]`
+   - title: `"{date} ⏳"` → `"{date} ✅"`（便于在 Obsidian 文件列表中一眼识别整理状态）
 
 ### Step 8 — 更新/创建项目文件
 
