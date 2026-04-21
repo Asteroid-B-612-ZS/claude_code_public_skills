@@ -1,5 +1,5 @@
 ﻿# inbox-organizer Skill 安装脚本
-# V1.0 | 2026-04-20
+# V2.0 | 2026-04-21
 
 $ErrorActionPreference = "Stop"
 $SkillName = "inbox-organizer"
@@ -33,8 +33,10 @@ Write-Host "[OK] 顶层注册: $TopLevelSkill" -ForegroundColor Green
 $requiredDirs = @(
     "$VaultRoot\00_收件箱",
     "$VaultRoot\10_每日日志",
+    "$VaultRoot\20_工程项目",
     "$VaultRoot\40_资源模板",
-    "$VaultRoot\50_收件箱备份"
+    "$VaultRoot\50_收件箱备份",
+    "$VaultRoot\50_系统"
 )
 
 $allOk = $true
@@ -56,6 +58,30 @@ if (Test-Path $templatePath) {
     $allOk = $false
 }
 
+# 5.1 验证项目模板
+$projectTemplatePath = "$VaultRoot\40_资源模板\项目模板.md"
+if (Test-Path $projectTemplatePath) {
+    Write-Host "[OK] 项目模板: $projectTemplatePath" -ForegroundColor Green
+} else {
+    Write-Host "[ERROR] 项目模板不存在: $projectTemplatePath" -ForegroundColor Red
+    $allOk = $false
+}
+
+# 5.2 验证系统文件
+$dashboardPath = "$VaultRoot\50_系统\_dashboard.md"
+$logPath = "$VaultRoot\50_系统\_log.md"
+if (Test-Path $dashboardPath) {
+    Write-Host "[OK] 系统控制台: $dashboardPath" -ForegroundColor Green
+} else {
+    Write-Host "[ERROR] 系统控制台不存在: $dashboardPath" -ForegroundColor Red
+    $allOk = $false
+}
+if (Test-Path $logPath) {
+    Write-Host "[OK] 操作日志: $logPath" -ForegroundColor Green
+} else {
+    Write-Host "[WARN] 操作日志不存在: $logPath" -ForegroundColor Yellow
+}
+
 # 6. 验证 cost-engineering 依赖
 $costEngine = "$env:USERPROFILE\.claude\skills\cost-engineering\engine\cost_db.py"
 if (Test-Path $costEngine) {
@@ -75,8 +101,8 @@ if (-not (Test-Path $backupAttach)) {
 Write-Host ""
 if ($allOk) {
     Write-Host "=== 安装成功 ===" -ForegroundColor Cyan
-    Write-Host "inbox-organizer V1.0 已就绪" -ForegroundColor White
-    Write-Host "在 Claude Code 中说 '整理收件箱' 即可触发" -ForegroundColor White
+    Write-Host "inbox-organizer V2.0 已就绪" -ForegroundColor White
+    Write-Host "在 Claude Code 中说 '整理今天日志并更新系统' 即可触发" -ForegroundColor White
 } else {
     Write-Host "=== 安装完成（有警告） ===" -ForegroundColor Yellow
     Write-Host "部分目录不存在，请检查 Obsidian vault 路径" -ForegroundColor White
