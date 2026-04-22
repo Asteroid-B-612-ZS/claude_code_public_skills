@@ -225,9 +225,9 @@ cd "C:\Users\qizhi\.claude\skills\cost-engineering\engine" && python cost_db.py 
 
 6. 扫描范围仅限 `🧾 个人笔记` 区域，AI 区域中的内容不提取
 7. 无任何项目标注且 AI 无法推断时 → 整段归为日常，不报错
-8. **更新日志标签和标题**（铁律例外：仅允许修改 tags 和 title 字段，不触碰正文内容）：
+8. **更新日志标签**（铁律例外：仅允许修改 tags 字段，不触碰正文内容）：
    - tags: `[daily, journal, 待整理]` → `[daily, journal, 已整理]`
-   - title: `"{date} ⏳"` → `"{date} ✅"`（便于在 Obsidian 文件列表中一眼识别整理状态）
+   - Obsidian 中通过 CSS snippet（`日志标签颜色.css`）自动给标签上色：待整理红色、已整理绿色
 
 ### Step 8 — 更新/创建项目文件
 
