@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""成本数据库工具 V3.4 (Python + sqlite3)
+"""成本数据库工具 V3.5 (Python + sqlite3)
 
 用法：python cost_db.py <command> [args]
 
@@ -31,10 +31,14 @@ from datetime import datetime
 # ── Paths ──
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.environ.get('COST_DB_PATH', os.path.join(HERE, '成本数据.db'))
-DASHBOARD_PATH = os.path.join(HERE, '成本查询.md')
-EXPORT_PATH = os.path.join(HERE, '成本数据_export.json')
-PENDING_DIR = os.path.dirname(os.path.abspath(DB_PATH))
+_DATA_DIR = os.environ.get(
+    'COST_DATA_DIR',
+    r'D:\iCloudDrive\iCloud~md~obsidian\QiZhi库\30_专业领域\成本数据库'
+)
+DB_PATH = os.environ.get('COST_DB_PATH', os.path.join(_DATA_DIR, '成本数据.db'))
+DASHBOARD_PATH = os.path.join(_DATA_DIR, '成本查询.md')
+EXPORT_PATH = os.path.join(_DATA_DIR, '成本数据_export.json')
+PENDING_DIR = _DATA_DIR
 PENDING_QUEUE_PATH = os.path.join(PENDING_DIR, 'pending_queue.json')
 
 # Caller protection: only commit_pending may call insert_record
@@ -1601,7 +1605,7 @@ def cmd_pending_list():
 def main():
     argv = sys.argv[1:]
     if not argv:
-        print('成本数据库工具 V3.4\n')
+        print('成本数据库工具 V3.5\n')
         print('用法：python cost_db.py <command> [args]\n')
         print('命令：')
         print('  pending --日期 ...   写入待审核 Excel（QQ Bot 入库推荐）')

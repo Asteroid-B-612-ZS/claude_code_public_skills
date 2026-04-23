@@ -13,7 +13,11 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_DB = os.path.join(HERE, '成本数据.db')
+_DATA_DIR = os.environ.get(
+    'COST_DATA_DIR',
+    r'D:\iCloudDrive\iCloud~md~obsidian\QiZhi库\30_专业领域\成本数据库'
+)
+DEFAULT_DB = os.path.join(_DATA_DIR, '成本数据.db')
 
 
 def init(db_path):

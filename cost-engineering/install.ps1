@@ -42,9 +42,14 @@ if (-not $pythonCmd) {
     exit 0
 }
 
-# 4. 初始化数据库
-$dbDir = Join-Path $ENGINE_DIR ""
-$dbPath = Join-Path $ENGINE_DIR "成本数据.db"
+# 4. 初始化数据库（默认指向 Obsidian 库）
+$obsidianDataDir = "D:\iCloudDrive\iCloud~md~obsidian\QiZhi库\30_专业领域\成本数据库"
+$dbPath = Join-Path $obsidianDataDir "成本数据.db"
+
+if (-not (Test-Path $obsidianDataDir)) {
+    New-Item -ItemType Directory -Path $obsidianDataDir -Force | Out-Null
+    Write-Host "[OK] 创建数据目录：$obsidianDataDir" -ForegroundColor Green
+}
 
 if (Test-Path $dbPath) {
     Write-Host "[INFO] 数据库已存在，跳过初始化：$dbPath" -ForegroundColor Yellow
@@ -66,7 +71,7 @@ if ($hasDeps -ne "ok") {
 }
 
 Write-Host ""
-Write-Host "=== 安装完成（V3.3）===" -ForegroundColor Cyan
+Write-Host "=== 安装完成（V3.5）===" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "使用方法：" -ForegroundColor White
 Write-Host "  入库（QQ Bot）：发送 /入库 钢筋 5500 t → 写入待审核 Excel"

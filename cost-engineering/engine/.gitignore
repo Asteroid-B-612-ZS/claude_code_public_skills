@@ -1,0 +1,10 @@
+# Data files (stored in Obsidian vault, not in skill directory)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+成本查询.md
+成本数据_export.json
+待审核_*.xlsx
+pending_queue.json
+__pycache__/

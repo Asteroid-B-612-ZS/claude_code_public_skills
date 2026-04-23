@@ -66,7 +66,7 @@ copy skill.md %USERPROFILE%\.claude\skills\cost-entry.md
 
 # 初始化数据库
 cd engine
-python init_db.py --db "你的路径/成本数据.db"
+python init_db.py
 
 # 安装依赖（仅 HTTP API 需要）
 pip install -r requirements.txt
@@ -76,7 +76,8 @@ pip install -r requirements.txt
 
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
-| `COST_DB_PATH` | 数据库文件路径 | cost_db.py 同目录 |
+| `COST_DATA_DIR` | 数据目录（db、看板、待审核等） | `D:\iCloudDrive\iCloud~md~obsidian\QiZhi库\30_专业领域\成本数据库` |
+| `COST_DB_PATH` | 数据库文件路径（覆盖 COST_DATA_DIR 推导值） | 同上 |
 | `COST_API_KEY` | API 认证密钥（不设置则无认证） | 无 |
 | `COST_PROJECT_DIR` | 项目报表输出目录 | 无（输出到终端） |
 | `CORS_ORIGINS` | API 允许的跨域来源（逗号分隔） | * |
@@ -270,6 +271,8 @@ cost-engineering/
 
 | 版本 | 日期 | 内容 |
 |------|------|------|
+| V3.5 | 2026-04-23 | 数据路径默认指向 Obsidian 库（COST_DATA_DIR），engine 目录只保留代码；新增 COST_DATA_DIR 环境变量 |
+| V3.4 | 2026-04-21 | 广联达清单批量导入：综合单价+工料机拆分+定额组成+项目特征 |
 | V3.3 | 2026-04-20 | 两阶段审核入库：pending 写入 Excel → 用户审核 → commit 导入 SQLite；废弃 iPhone 快捷指令直接入库；新增 openpyxl 依赖 |
 | V3.2 | 2026-04-19 | 自动校验引擎 + 安全加固 + 自包含（换算公式入库） |
 | V3.1 | 2026-04-18 | Python 迁移 + HTTP API + 关系型 SQLite |
