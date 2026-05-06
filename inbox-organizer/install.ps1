@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 $SkillName = "inbox-organizer"
 $SkillDir = "$env:USERPROFILE\.claude\skills\$SkillName"
 $TopLevelSkill = "$env:USERPROFILE\.claude\skills\$SkillName.md"
-$VaultRoot = "D:\iCloudDrive\iCloud~md~obsidian\QiZhi库"
+$VaultRoot = "D:\QZ_Vault"
 
 Write-Host "=== inbox-organizer Skill 安装 ===" -ForegroundColor Cyan
 Write-Host ""

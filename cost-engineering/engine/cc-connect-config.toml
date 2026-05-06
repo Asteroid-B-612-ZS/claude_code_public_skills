@@ -13,7 +13,7 @@ language = "zh"
     type = "claudecode"
     [projects.agent.options]
       mode = "auto"                            # auto = 自动执行（推荐）
-      work_dir = "YOUR_OBSIDIAN_VAULT_PATH"    # Obsidian 库根目录
+      work_dir = "YOUR_OBSIDIAN_VAULT_PATH"    # Obsidian 库根目录（如 D:/QZ_Vault）
 
   [[projects.platforms]]
     type = "qqbot"

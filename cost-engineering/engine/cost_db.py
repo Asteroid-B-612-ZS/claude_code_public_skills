@@ -33,7 +33,7 @@ from datetime import datetime
 HERE = os.path.dirname(os.path.abspath(__file__))
 _DATA_DIR = os.environ.get(
     'COST_DATA_DIR',
-    r'D:\iCloudDrive\iCloud~md~obsidian\QiZhi库\30_专业领域\成本数据库'
+    r'D:\QZ_Vault\30_专业领域\成本数据库'
 )
 DB_PATH = os.environ.get('COST_DB_PATH', os.path.join(_DATA_DIR, '成本数据.db'))
 DASHBOARD_PATH = os.path.join(_DATA_DIR, '成本查询.md')
@@ -581,22 +581,210 @@ def get_stats() -> dict:
         conn.close()
 
 
+_CARD_SEARCH_JS = r'''
+const vPath = "30_专业领域/成本数据库/成本数据_export.json";
+const f = app.vault.getAbstractFileByPath(vPath);
+if (!f) { dv.paragraph("⚠️ 数据文件未找到"); return; }
+const raw = await app.vault.read(f);
+const data = JSON.parse(raw);
+const recs = data.records || [];
+
+var KC="\u5927\u7c7b",KN="\u540d\u79f0",KU="\u5355\u4f4d",KP="\u5355\u4ef7",KD="\u65e5\u671f",
+    KS="\u89c4\u683c",KT="\u8ba1\u7a0e\u65b9\u5f0f",KL="\u5730\u533a",KJ="\u9879\u76ee",
+    KPT="\u8be2\u4ef7\u65b9\u5f0f",KR="\u62a5\u4ef7\u4eba",KST="\u72b6\u6001",KCV="\u6362\u7b97\u6765\u6e90",
+    KRM="\u5907\u6ce8";
+
+function esc(s) { return (s && s !== "") ? s : "-"; }
+
+var groups = {};
+for (var i = 0; i < recs.length; i++) {
+  var r = recs[i];
+  var key = r[KN] + "|" + r[KU];
+  if (!groups[key]) groups[key] = [];
+  groups[key].push(r);
+}
+
+var items = [];
+for (var key in groups) {
+  var recs2 = groups[key];
+  var prices = recs2.map(function(r) { return r[KP]; });
+  var dates = recs2.map(function(r) { return r[KD]; });
+  var avg = prices.reduce(function(a, b) { return a + b; }, 0) / prices.length;
+  var latest = dates.slice().sort().reverse()[0];
+  items.push({
+    cat: recs2[0][KC], name: recs2[0][KN], unit: recs2[0][KU],
+    avg: avg, min: Math.min.apply(null, prices), max: Math.max.apply(null, prices),
+    latest: latest, count: prices.length, records: recs2
+  });
+}
+
+var cats = [];
+var catSet = {};
+for (var i = 0; i < items.length; i++) {
+  if (!catSet[items[i].cat]) { catSet[items[i].cat] = true; cats.push(items[i].cat); }
+}
+cats.sort();
+
+var box = dv.el("div", "");
+box.className = "card-search-section";
+
+var bar = box.createEl("div", { cls: "card-search-bar" });
+var inp = bar.createEl("input", { cls: "card-search-input", attr: { placeholder: "搜索材料、工项名称...", type: "text" } });
+var sel = bar.createEl("select", { cls: "card-search-select" });
+sel.append(new Option("全部类别", ""));
+for (var ci = 0; ci < cats.length; ci++) sel.append(new Option(cats[ci], cats[ci]));
+var srt = bar.createEl("select", { cls: "card-search-select" });
+srt.append(new Option("最新优先", "date"));
+srt.append(new Option("价格降序", "pd"));
+srt.append(new Option("价格升序", "pa"));
+srt.append(new Option("按名称", "nm"));
+
+var info = box.createEl("div", { cls: "card-result-info" });
+var grid = box.createEl("div", { cls: "cost-card-grid" });
+
+function fmtPrice(n) {
+  return n != null ? n.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-";
+}
+
+function buildDetailTags(rec) {
+  var parts = [];
+  if (rec[KS]) parts.push("规格：" + rec[KS]);
+  parts.push("计税：" + esc(rec[KT]));
+  if (rec[KL] && rec[KL] !== "-") parts.push(rec[KL]);
+  if (rec[KJ] && rec[KJ] !== "-") parts.push(rec[KJ]);
+  if (rec[KPT] && rec[KPT] !== "-") parts.push(rec[KPT]);
+  if (rec[KR] && rec[KR] !== "-") parts.push("报价人：" + rec[KR]);
+  parts.push(esc(rec[KST]));
+  if (rec[KCV]) parts.push("换算自#" + rec[KCV]);
+  return parts;
+}
+
+function extractFeature(remark) {
+  if (!remark) return "";
+  var m = remark.match(/\u3010\u9879\u76ee\u7279\u5f81\u3011([\s\S]*?)(?=\u3010|$)/);
+  if (!m) return "";
+  var lines = m[1].replace(/\r/g, "").split(/\n/).filter(function(l) { return l.trim(); });
+  return lines;
+}
+
+function render() {
+  var kw = inp.value.toLowerCase().trim();
+  var cat = sel.value;
+  var sortBy = srt.value;
+  var filtered = items;
+  if (kw) filtered = filtered.filter(function(it) { return it.name.toLowerCase().includes(kw) || it.cat.toLowerCase().includes(kw); });
+  if (cat) filtered = filtered.filter(function(it) { return it.cat === cat; });
+
+  if (sortBy === "date") filtered.sort(function(a, b) { return b.latest.localeCompare(a.latest); });
+  else if (sortBy === "pd") filtered.sort(function(a, b) { return b.avg - a.avg; });
+  else if (sortBy === "pa") filtered.sort(function(a, b) { return a.avg - b.avg; });
+  else filtered.sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+  info.textContent = "共 " + filtered.length + " 项";
+  grid.empty();
+
+  if (!filtered.length) {
+    grid.createEl("div", { cls: "card-empty", text: "没有匹配的结果" });
+    return;
+  }
+
+  for (var idx = 0; idx < filtered.length; idx++) {
+    var item = filtered[idx];
+    var card = grid.createEl("div", { cls: "cost-card" });
+    card.setAttribute("data-cat", item.cat);
+    card.createEl("div", { cls: "cost-card-accent" });
+
+    var hdr = card.createEl("div", { cls: "cost-card-header" });
+    hdr.createEl("span", { cls: "cost-card-badge", text: item.cat });
+    hdr.createEl("span", { cls: "cost-card-date", text: item.latest });
+
+    card.createEl("div", { cls: "cost-card-name", text: item.name });
+
+    if (item.count === 1) {
+      var rec = item.records[0];
+      var priceEl = card.createEl("div", { cls: "cost-card-price" });
+      priceEl.textContent = fmtPrice(rec[KP]) + " ";
+      priceEl.createEl("span", { cls: "cost-card-unit", text: rec[KU] });
+
+      var feat = extractFeature(rec[KRM]);
+      if (feat && feat.length > 0) {
+        var featBox = card.createEl("div", { cls: "cost-card-feature" });
+        for (var fi = 0; fi < feat.length; fi++) {
+          featBox.createEl("div", { text: feat[fi] });
+        }
+      }
+
+      var det = card.createEl("div", { cls: "cost-card-detail" });
+      var tags = buildDetailTags(rec);
+      det.textContent = tags.join(" \u00b7 ");
+    } else {
+      var priceEl2 = card.createEl("div", { cls: "cost-card-price" });
+      priceEl2.textContent = fmtPrice(item.avg) + " ";
+      priceEl2.createEl("span", { cls: "cost-card-unit", text: item.unit });
+      priceEl2.append(" \u00b7 均价");
+      var rangeEl = card.createEl("div", { cls: "cost-card-range-info" });
+      rangeEl.textContent = fmtPrice(item.min) + " ~ " + fmtPrice(item.max);
+      rangeEl.createEl("span", { cls: "rec-count", text: item.count + " 条" });
+      card.createEl("div", { cls: "cost-card-divider" });
+      var recList = card.createEl("div", { cls: "cost-card-records" });
+      for (var ri = 0; ri < item.records.length; ri++) {
+        var rr = item.records[ri];
+        var recEl = recList.createEl("div", { cls: "cost-record" });
+        var recTop = recEl.createEl("div", { cls: "cost-record-top" });
+        recTop.createEl("span", { cls: "cost-record-price", text: fmtPrice(rr[KP]) });
+        recTop.createEl("span", { cls: "cost-record-date", text: esc(rr[KD]) });
+        var rfeat = extractFeature(rr[KRM]);
+        if (rfeat && rfeat.length > 0) {
+          var rfeatBox = recEl.createEl("div", { cls: "cost-record-feature" });
+          for (var ffi = 0; ffi < rfeat.length; ffi++) {
+            rfeatBox.createEl("div", { text: rfeat[ffi] });
+          }
+        }
+        var rtags = buildDetailTags(rr);
+        if (rtags.length > 0) {
+          recEl.createEl("div", { cls: "cost-record-detail", text: rtags.join(" \u00b7 ") });
+        }
+      }
+    }
+  }
+}
+
+render();
+inp.addEventListener("input", render);
+sel.addEventListener("change", render);
+srt.addEventListener("change", render);
+'''
+
+
 def generate_dashboard() -> str:
-    """Generate 成本查询.md dashboard. Returns the file path."""
+    """Generate 成本查询.md dashboard with card-style layout. Returns the file path."""
     conn = open_db()
     try:
         now_str = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
         md = '---\n'
+        md += 'cssclasses:\n  - cost-dashboard\n'
         md += 'doc_type: 成本查询\n'
         md += f'updated: "{now_str}"\n'
         md += '---\n\n'
         md += '# 成本查询\n\n'
-        md += f'> 数据来源：SQLite（V3.2 关系型）| 最后更新：{now_str}\n'
-        md += '> 运行 `python cost_db.py dashboard` 刷新\n\n---\n\n'
 
-        # 1. 单价查询
-        md += '## 单价查询\n\n<!-- AUTO-GENERATED: lookup -->\n'
+        # Overview stats
+        total_items = run_query(conn, 'SELECT COUNT(*) as c FROM cost_item')[0]['c']
+        total_records = run_query(conn, 'SELECT COUNT(*) as c FROM cost_price')[0]['c']
+        distinct_cats = run_query(conn, 'SELECT COUNT(DISTINCT category) as c FROM cost_item')[0]['c']
+        confirmed = run_query(conn, "SELECT COUNT(*) as c FROM cost_price WHERE status='已确认'")[0]['c']
+        md += '> [!stat] 数据总览\n'
+        md += f'> **{total_items}** 个成本项 · **{total_records}** 条记录 · **{distinct_cats}** 个大类 · **{confirmed}** 条已确认\n'
+        md += f'> 最后更新：{now_str} · 运行 `python cost_db.py dashboard` 刷新\n\n---\n\n'
+
+        # 1. 单价查询（卡片搜索）
+        md += '## 单价查询\n\n'
+        md += '```dataviewjs\n'
+        md += _CARD_SEARCH_JS.strip()
+        md += '\n```\n\n'
+        md += '> [!abstract]- 查看完整单价表\n>\n'
+        md += '> <!-- AUTO-GENERATED: lookup -->\n'
         all_items = run_query(conn, """
             SELECT ci.category, ci.name, cp.unit, COUNT(*) AS samples,
                    ROUND(AVG(cp.price),2) AS avg_price, ROUND(MIN(cp.price),2) AS min_price,
@@ -605,10 +793,10 @@ def generate_dashboard() -> str:
             GROUP BY ci.category, ci.name, cp.unit
             ORDER BY latest_date DESC, ci.category, ci.name
         """)
-        md += '| 最新日期 | 大类 | 名称 | 单位 | 样本 | 均价 | 最低 | 最高 |\n'
-        md += '|----------|------|------|------|------|------|------|------|\n'
+        md += '> | 最新日期 | 大类 | 名称 | 单位 | 样本 | 均价 | 最低 | 最高 |\n'
+        md += '> |----------|------|------|------|------|------|------|------|\n'
         for r in all_items:
-            md += f"| {r['latest_date']} | {r['category']} | {r['name']} | {r['unit']} | {r['samples']} | {fmt(r['avg_price'])} | {fmt(r['min_price'])} | {fmt(r['max_price'])} |\n"
+            md += f"> | {r['latest_date']} | {r['category']} | {r['name']} | {r['unit']} | {r['samples']} | {fmt(r['avg_price'])} | {fmt(r['min_price'])} | {fmt(r['max_price'])} |\n"
 
         # 2. 最近入库
         md += '\n---\n\n## 最近入库记录\n\n<!-- AUTO-GENERATED: recent -->\n'
@@ -754,10 +942,9 @@ def generate_dashboard() -> str:
             FROM cost_price cp JOIN cost_item ci ON cp.item_id = ci.id
             GROUP BY cp.project_name ORDER BY cnt DESC
         """)
-        md += '| 项目 | 记录数 | 涉及工项 | 费用大类 |\n'
-        md += '|------|--------|----------|----------|\n'
         for r in projects:
-            md += f"| {r['project_name'] or '未分类'} | {r['cnt']} | {r['items']} | {r['categories'] or '-'} |\n"
+            md += f"> [!project] {r['project_name'] or '未分类'}\n"
+            md += f"> **{r['cnt']}** 条记录 · **{r['items']}** 个工项 · {r['categories'] or '-'}\n\n"
 
         md += '\n> 查询：`python cost_db.py query "SELECT ..."`\n'
 

@@ -43,7 +43,7 @@ if (-not $pythonCmd) {
 }
 
 # 4. 初始化数据库（默认指向 Obsidian 库）
-$obsidianDataDir = "D:\iCloudDrive\iCloud~md~obsidian\QiZhi库\30_专业领域\成本数据库"
+$obsidianDataDir = "D:\QZ_Vault\30_专业领域\成本数据库"
 $dbPath = Join-Path $obsidianDataDir "成本数据.db"
 
 if (-not (Test-Path $obsidianDataDir)) {
