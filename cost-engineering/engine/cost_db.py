@@ -33,7 +33,7 @@ from datetime import datetime
 HERE = os.path.dirname(os.path.abspath(__file__))
 _DATA_DIR = os.environ.get(
     'COST_DATA_DIR',
-    r'D:\QZ_Vault\30_专业领域\成本数据库'
+    r'D:\iCloudDrive\iCloud~md~obsidian\QZ_Vault\30_专业领域\成本数据库'
 )
 DB_PATH = os.environ.get('COST_DB_PATH', os.path.join(_DATA_DIR, '成本数据.db'))
 DASHBOARD_PATH = os.path.join(_DATA_DIR, '成本查询.md')

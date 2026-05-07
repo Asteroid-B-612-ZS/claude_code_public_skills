@@ -22,7 +22,7 @@ version: 260422.1
 ## 关键路径
 
 ```
-VAULT_ROOT = D:\QZ_Vault
+VAULT_ROOT = D:\iCloudDrive\iCloud~md~obsidian\QZ_Vault
 
 收件箱:        {VAULT_ROOT}\00_收件箱\
 附件目录:      {VAULT_ROOT}\00_收件箱\附件\

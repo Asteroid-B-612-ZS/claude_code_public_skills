@@ -76,7 +76,7 @@ pip install -r requirements.txt
 
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
-| `COST_DATA_DIR` | 数据目录（db、看板、待审核等） | `D:\QZ_Vault\30_专业领域\成本数据库` |
+| `COST_DATA_DIR` | 数据目录（db、看板、待审核等） | `D:\iCloudDrive\iCloud~md~obsidian\QZ_Vault\30_专业领域\成本数据库` |
 | `COST_DB_PATH` | 数据库文件路径（覆盖 COST_DATA_DIR 推导值） | 同上 |
 | `COST_API_KEY` | API 认证密钥（不设置则无认证） | 无 |
 | `COST_PROJECT_DIR` | 项目报表输出目录 | 无（输出到终端） |
