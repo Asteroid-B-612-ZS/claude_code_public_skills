@@ -56,5 +56,41 @@ class GovernanceTests(unittest.TestCase):
             (root / "CLAUDE.md").unlink()
             self.assertTrue(any("QZ-ADOPT-006" in s for s in audit(root)))
 
+    def test_create_project_dry_run_no_io(self):
+        from create_project import create_project
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch("subprocess.run") as mock_run:
+                commands = create_project("NewProject", root, kind="python",
+                                          dry_run=True, remote=True)
+            self.assertEqual(4, len(commands))
+            mock_run.assert_not_called()
+            self.assertFalse((root / "NewProject").exists())
+            self.assertIn("--private", commands[-1])
+
+    def test_create_project_local_creates_governed_files(self):
+        from create_project import create_project
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            calls = []
+            def fake_run(argv, *, check):
+                calls.append(argv)
+            create_project("new-app", root, kind="miniapp",
+                           runner=fake_run, remote=False)
+            self.assertEqual(3, len(calls))
+            self.assertEqual([], audit(root / "new-app"))
+            self.assertTrue((root / "new-app/README.md").is_file())
+            self.assertIn("node_modules", (root / "new-app/.gitignore").read_text())
+            with self.assertRaises(FileExistsError):
+                create_project("new-app", root, runner=fake_run)
+
+    def test_create_project_invalid_slug_and_owner(self):
+        from create_project import create_project
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaises(ValueError):
+                create_project("../escape", Path(temp), dry_run=True)
+            with self.assertRaises(ValueError):
+                create_project("repo", Path(temp), owner="bad/owner", dry_run=True)
+
 if __name__ == "__main__":
     unittest.main()
