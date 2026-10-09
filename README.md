@@ -15,3 +15,15 @@ Claude Code 公开技能集合。
 `bootstrap.py` 为任何本地新/旧项目生成 `.qizhi/governance.lock.json`、CI、AGENTS/CLAUDE 入口；`audit.py` 在 PR 和每周检查安装完整性。所有接入方使用 **完整 40 位 commit SHA** 固定调用公开复用工作流，绝不运行未固定版本的 main。复制执行器遵循标准库的治理，不改变任何业务模块的 `standards.baseline`。
 
 注：GitHub 连接暂不支持创建新的仓库，因此这套公开执行器暂托管在已有公开仓库的隔离目录，未来可无损迁移至专用执行仓库；GitHub 平台级必需检查仍取决于分支保护权限与套餐。
+
+### 新项目统一入口
+
+在具备 Python 3.12、Git（可选 GitHub CLI `gh`）的电脑上：
+
+```bash
+python qizhi-governance/create_project.py MyProject --kind python --root .
+# 如需立即创建 GitHub 仓库（需要先 gh auth login）：
+python qizhi-governance/create_project.py MyProject --kind python --root . --owner Asteroid-B-612-ZS --create-remote
+```
+
+上述命令创建项目目录、初始化 Git、加入冻结的 Git Governance 规则与每周巡检入口，并提交首个 Git Commit。`--create-remote` 是明确的远程创建授权；默认只在本地创建，不会触碰线上任何仓库。未来 Claude / GPT 应使用这一入口创建项目，不得自行遗漏治理文件。第三方创建的 GitHub 仓库仍须单独运行导入脚本。
