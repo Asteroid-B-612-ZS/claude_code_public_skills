@@ -1,0 +1,46 @@
+name: QiZhi Reusable Governance
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  governance:
+    name: governance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out caller repository at PR context
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get immutable public governance executor
+        uses: actions/checkout@v4
+        with:
+          repository: Asteroid-B-612-ZS/claude_code_public_skills
+          ref: 92e3f275503c916f7acf7d1f6dbb5b2f13120102
+          path: .qizhi-executor
+          persist-credentials: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audit adoption and pinned governance baseline
+        run: python .qizhi-executor/qizhi-governance/audit.py --repo-root .
+      - name: Validate new PR branch, title and non-merge commit subjects
+        if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if python -c 'import json,os,sys; p=json.load(open(".qizhi/governance.lock.json",encoding="utf-8"));sys.exit(0 if int(os.environ["PR_NUMBER"]) in p.get("legacy_pr_numbers",[]) else 1)'; then
+            echo "Grandfathered existing PR #$PR_NUMBER: skipping only branch and commit naming."
+          else
+            python .qizhi-executor/qizhi-governance/validate_branch_name.py "$PR_HEAD_REF"
+            python .qizhi-executor/qizhi-governance/validate_git_workflow.py \
+              --pr-title "$PR_TITLE" --commit-range "$PR_BASE_SHA..$PR_HEAD_SHA"
+          fi
