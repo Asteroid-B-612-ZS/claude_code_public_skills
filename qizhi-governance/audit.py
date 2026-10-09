@@ -12,7 +12,7 @@ STANDARDS_COMMIT = "a07f432d5cf645a281f54ff35a219b85f0234667"
 WORKFLOW = ".github/workflows/qizhi-governance.yml"
 LOCK = ".qizhi/governance.lock.json"
 DOCUMENT = ".qizhi/GIT_GOVERNANCE.md"
-PUBLIC_REUSABLE = "Asteroid-B-612-ZS/claude_code_public_skills/.github/workflows/qizhi-governance.yml"
+PUBLIC_REUSABLE = "Asteroid-B-612-ZS/claude_code_public_skills/.github/workflows/qizhi-reusable.yml"
 
 
 def audit(root: Path) -> list[str]:
